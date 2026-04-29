@@ -7,7 +7,8 @@
 <!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
+           getRedirectResult, signOut, onAuthStateChanged }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
   import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
@@ -31,15 +32,28 @@
   let currentUser = null;
 
   // ── 登入 / 登出 ──
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
   window.fbSignIn = async () => {
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch(e) { console.error(e); }
+      if (isMobile) {
+        await signInWithRedirect(auth, provider);
+      } else {
+        await signInWithPopup(auth, provider);
+      }
+    } catch(e) { console.error(e); alert('登入失敗：' + e.message); }
   };
   window.fbSignOut = async () => {
     await signOut(auth);
   };
+
+  // ── 處理 Redirect 回來的結果 ──
+  getRedirectResult(auth).then(result => {
+    if (result && result.user) {
+      // 登入成功，onAuthStateChanged 會自動觸發
+    }
+  }).catch(e => console.error('Redirect error:', e));
 
   // ── 讀取雲端資料 ──
   async function loadCloud(uid) {
