@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOEIC 990 衝刺計畫</title>
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  // ─── 填入你的 Firebase 設定 ───────────────────────────
+  const firebaseConfig = {
+    apiKey:            "AIzaSyAhGoXwWA8JqiqSJ7bnB9ROFErKzNnkUrE",
+    authDomain:        "toeic990-2300d.firebaseapp.com",
+    projectId:         "toeic990-2300d",
+    storageBucket:     "toeic990-2300d.firebasestorage.app",
+    messagingSenderId: "984286785509",
+    appId:             "1:984286785509:web:cbc6a0eadaf29480a9890c",
+    measurementId:     "G-QCCMZM23QX"
+  };
+  // ──────────────────────────────────────────────────────
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  let currentUser = null;
+
+  // ── 登入 / 登出 ──
+  window.fbSignIn = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch(e) { console.error(e); }
+  };
+  window.fbSignOut = async () => {
+    await signOut(auth);
+  };
+
+  // ── 讀取雲端資料 ──
+  async function loadCloud(uid) {
+    showSyncStatus('⏳ 載入雲端資料…', 'loading');
+    try {
+      const ref  = doc(db, 'users', uid);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const d = snap.data();
+        if (d.toeic_days)     { dayCompleted = d.toeic_days;     localStorage.setItem('toeic_days',     JSON.stringify(d.toeic_days)); }
+        if (d.toeic_scores)   { scores       = d.toeic_scores;   localStorage.setItem('toeic_scores',   JSON.stringify(d.toeic_scores)); }
+        if (d.toeic_practice) {               localStorage.setItem('toeic_practice', JSON.stringify(d.toeic_practice)); }
+        if (d.toeic_start)    {               localStorage.setItem('toeic_start',    d.toeic_start); }
+      }
+      showSyncStatus('☁️ 雲端同步完成', 'ok');
+      initDay(); renderScores(); renderPracticeHistory(); updateProgress();
+    } catch(e) {
+      showSyncStatus('⚠️ 讀取失敗，使用本機資料', 'warn');
+      initDay(); renderScores(); renderPracticeHistory(); updateProgress();
+    }
+  }
+
+  // ── 儲存雲端資料（全量覆蓋） ──
+  window.saveCloud = async (key, value) => {
+    if (!currentUser) return;
+    try {
+      const ref = doc(db, 'users', currentUser.uid);
+      await setDoc(ref, { [key]: value }, { merge: true });
+      showSyncStatus('☁️ 已同步到雲端', 'ok');
+    } catch(e) {
+      showSyncStatus('⚠️ 同步失敗，已存本機', 'warn');
+    }
+  };
+
+  // ── 監聽登入狀態 ──
+  onAuthStateChanged(auth, user => {
+    currentUser = user;
+    const loginBtn  = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const userInfo  = document.getElementById('userInfo');
+    if (user) {
+      if (loginBtn)  loginBtn.style.display  = 'none';
+      if (logoutBtn) logoutBtn.style.display = 'inline-flex';
+      if (userInfo)  userInfo.textContent    = user.displayName || user.email;
+      loadCloud(user.uid);
+    } else {
+      if (loginBtn)  loginBtn.style.display  = 'inline-flex';
+      if (logoutBtn) logoutBtn.style.display = 'none';
+      if (userInfo)  userInfo.textContent    = '';
+      showSyncStatus('📱 本機模式（未登入）', 'warn');
+      initDay(); renderScores(); renderPracticeHistory(); updateProgress();
+    }
+  });
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+TC:wght@300;400;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0f;--surface:#12121a;--card:#1a1a26;--border:#2a2a40;--accent:#f5c518;--accent2:#e05c5c;--accent3:#4fc3f7;--text:#e8e8f0;--muted:#6a6a8a;--green:#4caf82;}
+/* ── AUTH BAR ── */
+.auth-bar{display:flex;align-items:center;gap:.8rem;padding:.5rem 2rem;background:#0d0d15;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.auth-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .9rem;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:.72rem;font-family:'Noto Sans TC',sans-serif;letter-spacing:1px;cursor:pointer;transition:all .2s;border-radius:2px;}
+.auth-btn:hover{border-color:var(--accent);color:var(--accent);}
+.auth-btn.google{border-color:rgba(79,195,247,.4);color:var(--accent3);}
+.auth-btn.google:hover{background:rgba(79,195,247,.08);}
+.auth-btn.logout{border-color:rgba(224,92,92,.3);color:var(--accent2);}
+.auth-btn.logout:hover{background:rgba(224,92,92,.08);}
+.auth-user{font-size:.72rem;color:var(--green);font-family:'JetBrains Mono',monospace;}
+.sync-status{font-size:.68rem;font-family:'JetBrains Mono',monospace;padding:.2rem .6rem;border-radius:20px;margin-left:auto;}
+.sync-status.ok{background:rgba(76,175,130,.1);color:var(--green);}
+.sync-status.warn{background:rgba(245,197,24,.1);color:var(--accent);}
+.sync-status.loading{background:rgba(79,195,247,.1);color:var(--accent3);}
+/* ── SETUP GUIDE ── */
+.setup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:999;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.setup-box{background:var(--card);border:1px solid var(--border);padding:2rem;max-width:540px;width:100%;max-height:90vh;overflow-y:auto;}
+.setup-box h2{font-family:'Bebas Neue',cursive;font-size:1.8rem;letter-spacing:3px;color:var(--accent);margin-bottom:1rem;}
+.setup-step{display:flex;gap:.8rem;margin-bottom:1rem;font-size:.82rem;line-height:1.7;color:var(--muted);}
+.setup-step .sn{font-family:'Bebas Neue',cursive;font-size:1.4rem;color:var(--accent3);flex-shrink:0;line-height:1.1;}
+.setup-step strong{color:var(--text);}
+.setup-step a{color:var(--accent3);text-decoration:none;}
+.setup-step a:hover{text-decoration:underline;}
+.setup-step code{background:var(--surface);padding:.1rem .4rem;border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--accent2);}
+.setup-close{margin-top:1rem;padding:.5rem 1.2rem;background:var(--accent);color:#000;border:none;font-family:'Bebas Neue',cursive;font-size:1rem;letter-spacing:2px;cursor:pointer;}
+.setup-note{background:rgba(245,197,24,.06);border:1px solid rgba(245,197,24,.2);padding:.8rem 1rem;font-size:.78rem;color:var(--muted);margin-top:1rem;line-height:1.7;}
+.setup-note strong{color:var(--accent);}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans TC',sans-serif;min-height:100vh;overflow-x:hidden;}
+header{background:linear-gradient(135deg,#0a0a0f,#1a1020,#0a0f1a);border-bottom:1px solid var(--border);padding:1.2rem 2rem;position:relative;overflow:hidden;}
+header::before{content:'';position:absolute;top:-50px;right:-50px;width:250px;height:250px;background:radial-gradient(circle,rgba(245,197,24,.08),transparent 70%);pointer-events:none;}
+.header-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.8rem;}
+.logo{font-family:'Bebas Neue',cursive;font-size:2.6rem;letter-spacing:4px;color:var(--accent);line-height:1;text-shadow:0 0 30px rgba(245,197,24,.3);}
+.logo span{color:var(--text);}
+.score-badge{background:var(--accent);color:#000;font-family:'Bebas Neue',cursive;font-size:1.4rem;padding:.3rem 1rem;letter-spacing:2px;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);}
+.progress-section{padding:.7rem 2rem;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;}
+.progress-label{font-size:.65rem;color:var(--muted);letter-spacing:2px;text-transform:uppercase;white-space:nowrap;}
+.progress-bar-wrap{flex:1;min-width:150px;background:var(--border);height:5px;border-radius:3px;}
+.progress-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--accent2),var(--accent));width:2%;transition:width 1s ease;}
+.progress-text{font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--accent);white-space:nowrap;}
+.tabs{display:flex;padding:0 2rem;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;gap:0;}
+.tab{padding:.8rem 1.2rem;font-size:.72rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;font-family:'Noto Sans TC',sans-serif;}
+.tab:hover{color:var(--text);}.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+main{padding:1.5rem 2rem;max-width:1200px;margin:0 auto;}
+.panel{display:none;animation:fadeUp .3s ease;}.panel.active{display:block;}
+.grid-3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-bottom:1.3rem;}
+.grid-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem;margin-bottom:1.3rem;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:2px;padding:1.2rem;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.card.yellow::before{background:var(--accent);}.card.red::before{background:var(--accent2);}.card.blue::before{background:var(--accent3);}.card.green::before{background:var(--green);}
+.card-label{font-size:.62rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem;}
+.card-title{font-family:'Bebas Neue',cursive;font-size:1.5rem;letter-spacing:2px;line-height:1.1;margin-bottom:.3rem;}
+.card-body{font-size:.8rem;color:var(--muted);line-height:1.7;}
+.s-title{font-family:'Bebas Neue',cursive;font-size:1.7rem;letter-spacing:3px;margin-bottom:1rem;}
+.s-title.yellow{color:var(--accent);}.s-title.blue{color:var(--accent3);}.s-title.green{color:var(--green);}.s-title.red{color:var(--accent2);}
+.sub-label{font-size:.62rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted);border-left:3px solid var(--accent);padding-left:.7rem;margin-bottom:.9rem;}
+.sub-label.green{border-left-color:var(--green);}.sub-label.blue{border-left-color:var(--accent3);}.sub-label.red{border-left-color:var(--accent2);}
+hr.div{border:none;border-top:1px solid var(--border);margin:1.8rem 0;}
+.tip-box{background:rgba(245,197,24,.05);border:1px solid rgba(245,197,24,.2);padding:.8rem 1rem;margin-bottom:1.2rem;font-size:.78rem;color:var(--muted);line-height:1.7;}
+.tip-box strong{color:var(--accent);}
+
+/* ===== DAILY PANEL ===== */
+.day-nav{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;}
+.day-btn{padding:.5rem 1rem;background:var(--card);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:.8rem;transition:all .2s;}
+.day-btn:hover{border-color:var(--accent);color:var(--accent);}
+.day-display{font-family:'Bebas Neue',cursive;font-size:2rem;letter-spacing:3px;color:var(--accent);}
+.day-date{font-size:.72rem;color:var(--muted);letter-spacing:2px;}
+.day-completed{font-size:.72rem;color:var(--green);letter-spacing:1px;margin-left:auto;}
+
+.lesson-block{background:var(--card);border:1px solid var(--border);margin-bottom:1rem;overflow:hidden;}
+.lesson-header{display:flex;align-items:center;gap:1rem;padding:1rem 1.2rem;cursor:pointer;transition:background .2s;user-select:none;}
+.lesson-header:hover{background:rgba(255,255,255,.03);}
+.lesson-icon{font-size:1.4rem;line-height:1;flex-shrink:0;}
+.lesson-meta{flex:1;}
+.lesson-title{font-size:.95rem;font-weight:700;margin-bottom:.1rem;}
+.lesson-desc{font-size:.72rem;color:var(--muted);}
+.lesson-badge{font-size:.62rem;padding:.2rem .6rem;border-radius:20px;font-family:'JetBrains Mono',monospace;letter-spacing:1px;white-space:nowrap;}
+.lb-vocab{background:rgba(245,197,24,.15);color:var(--accent);}
+.lb-grammar{background:rgba(224,92,92,.15);color:var(--accent2);}
+.lb-listen{background:rgba(79,195,247,.15);color:var(--accent3);}
+.lb-read{background:rgba(76,175,130,.15);color:var(--green);}
+.lb-done{background:rgba(76,175,130,.2);color:var(--green);}
+.lesson-toggle{color:var(--muted);font-size:.8rem;transition:transform .3s;flex-shrink:0;}
+.lesson-toggle.open{transform:rotate(180deg);}
+.lesson-body{display:none;padding:1.2rem;border-top:1px solid var(--border);}
+.lesson-body.open{display:block;}
+.done-btn{margin-top:1rem;padding:.5rem 1.3rem;background:var(--green);color:#000;border:none;font-family:'Bebas Neue',cursive;font-size:1rem;letter-spacing:2px;cursor:pointer;transition:all .2s;}
+.done-btn:hover{background:#5dd99a;}
+.done-btn:disabled{background:var(--border);color:var(--muted);cursor:default;}
+
+/* VOCAB CARDS in daily */
+.vc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.7rem;margin-bottom:1rem;}
+.vc{background:var(--surface);border:1px solid var(--border);padding:.8rem;cursor:pointer;transition:all .2s;min-height:75px;}
+.vc:hover{border-color:var(--accent);transform:translateY(-2px);}
+.vc.flipped .vc-front{display:none;}.vc.flipped .vc-back{display:block;}
+.vc-front .vc-word{font-family:'JetBrains Mono',monospace;font-size:.95rem;color:var(--accent);margin-bottom:.15rem;}
+.vc-front .vc-ph{font-size:.68rem;color:var(--muted);}
+.vc-front .vc-pos{font-size:.6rem;color:var(--accent3);margin-top:.2rem;}
+.vc-back{display:none;}
+.vc-back .vc-tw{font-size:.85rem;color:var(--text);margin-bottom:.3rem;}
+.vc-back .vc-ex{font-size:.7rem;color:var(--muted);font-style:italic;line-height:1.5;}
+.vc-hint{font-size:.58rem;color:var(--muted);margin-top:.3rem;letter-spacing:1px;}
+.vc-speak{background:none;border:1px solid rgba(79,195,247,.3);color:var(--accent3);font-size:.72rem;padding:.2rem .5rem;cursor:pointer;border-radius:2px;transition:all .2s;margin-top:.4rem;font-family:'JetBrains Mono',monospace;letter-spacing:1px;display:flex;align-items:center;gap:.3rem;}
+.vc-speak:hover{background:rgba(79,195,247,.1);border-color:var(--accent3);}
+.vc-speak.speaking{background:rgba(79,195,247,.2);color:#fff;animation:pulse .6s infinite alternate;}
+.vc-speak-ex{background:none;border:1px solid rgba(76,175,130,.3);color:var(--green);font-size:.68rem;padding:.15rem .45rem;cursor:pointer;border-radius:2px;transition:all .2s;margin-top:.3rem;font-family:'JetBrains Mono',monospace;letter-spacing:1px;display:inline-flex;align-items:center;gap:.25rem;}
+.vc-speak-ex:hover{background:rgba(76,175,130,.1);}
+@keyframes pulse{from{opacity:.6;}to{opacity:1;}}
+.vocab-note{font-size:.78rem;color:var(--muted);line-height:1.8;background:var(--surface);padding:.8rem 1rem;margin-top:.8rem;}
+.vocab-note strong{color:var(--accent);}
+
+/* GRAMMAR in daily */
+.g-rule{background:var(--surface);border-left:3px solid var(--accent2);padding:.8rem 1rem;margin-bottom:.8rem;font-size:.82rem;line-height:1.8;color:var(--muted);}
+.g-rule strong{color:var(--text);}
+.g-rule .formula{font-family:'JetBrains Mono',monospace;color:var(--accent2);font-size:.8rem;}
+.dquiz-card{background:var(--surface);border:1px solid var(--border);padding:1rem;margin-bottom:.7rem;}
+.dquiz-q{font-size:.88rem;margin-bottom:.7rem;line-height:1.6;}
+.dquiz-q em{font-style:normal;color:var(--accent);border-bottom:1px dashed var(--accent);}
+.dopts{display:flex;flex-direction:column;gap:.35rem;}
+.dopt{padding:.45rem .8rem;border:1px solid var(--border);background:var(--bg);cursor:pointer;font-size:.8rem;text-align:left;color:var(--text);font-family:'Noto Sans TC',sans-serif;transition:all .2s;}
+.dopt:hover:not([disabled]){border-color:var(--accent);background:rgba(245,197,24,.04);}
+.dopt.dc{border-color:var(--green)!important;background:rgba(76,175,130,.15)!important;color:var(--green)!important;font-weight:700;}
+.dopt.dw{border-color:var(--accent2)!important;background:rgba(224,92,92,.15)!important;color:var(--accent2)!important;}
+.dopt.dsc{border-color:var(--green)!important;background:rgba(76,175,130,.12)!important;color:var(--green)!important;font-weight:700;}
+.dopt-tag{font-size:.65rem;margin-left:.5rem;opacity:.9;font-family:'Noto Sans TC',sans-serif;}
+.dfb{margin-top:.6rem;padding:.6rem .8rem;background:var(--card);font-size:.75rem;color:var(--muted);display:none;border-left:2px solid var(--green);line-height:1.6;}
+.dfb.show{display:block;}.dfb.wfb{border-left-color:var(--accent2);}
+.g-score{margin-top:.8rem;padding:.6rem 1rem;background:rgba(245,197,24,.05);border:1px solid rgba(245,197,24,.15);font-size:.8rem;color:var(--muted);display:none;}
+.g-score.show{display:block;}.g-score strong{color:var(--accent);}
+
+/* LISTENING in daily */
+.listen-steps{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem;}
+.ls{display:flex;gap:.8rem;align-items:flex-start;padding:.6rem .8rem;background:var(--surface);border:1px solid var(--border);}
+.ls-num{font-family:'Bebas Neue',cursive;font-size:1.2rem;color:var(--accent3);line-height:1;flex-shrink:0;width:20px;}
+.ls-text{font-size:.8rem;color:var(--muted);line-height:1.6;}
+.ls-text strong{color:var(--text);}
+.audio-resource{background:var(--surface);border:1px solid var(--border);padding:1rem 1.2rem;margin-bottom:.8rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+.ar-icon{font-size:1.5rem;flex-shrink:0;}
+.ar-info{flex:1;}
+.ar-info h4{font-size:.88rem;margin-bottom:.2rem;}
+.ar-info p{font-size:.75rem;color:var(--muted);line-height:1.4;}
+.ar-link{display:inline-block;padding:.4rem 1rem;background:var(--accent3);color:#000;font-family:'Bebas Neue',cursive;font-size:.9rem;letter-spacing:2px;text-decoration:none;transition:all .2s;clip-path:polygon(5px 0%,100% 0%,calc(100% - 5px) 100%,0% 100%);}
+.ar-link:hover{filter:brightness(1.15);}
+.ar-link.yl{background:var(--accent);}
+.ar-link.gn{background:var(--green);}
+.shadow-words{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.8rem;}
+.sw{background:var(--card);border:1px solid var(--border);padding:.3rem .7rem;font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--text);}
+.transcript-box{background:var(--surface);border-left:3px solid var(--accent3);padding:.8rem 1rem;font-size:.8rem;line-height:1.9;color:var(--muted);margin-top:.8rem;}
+.transcript-box strong{color:var(--text);}
+.listen-quiz{margin-top:.8rem;}
+.lq-title{font-size:.65rem;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:.6rem;}
+
+/* WEEK NAV */
+.week-dots{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:1rem;}
+.wd{width:28px;height:28px;border:1px solid var(--border);background:var(--card);cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--muted);display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.wd:hover{border-color:var(--accent);color:var(--accent);}
+.wd.active{background:var(--accent);color:#000;border-color:var(--accent);}
+.wd.done{background:rgba(76,175,130,.15);border-color:var(--green);color:var(--green);}
+
+/* SCHEDULE */
+.res-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:.7rem;margin-bottom:1.3rem;}
+.res-link{display:flex;flex-direction:column;gap:.3rem;background:var(--card);border:1px solid var(--border);padding:.8rem .9rem;text-decoration:none;transition:all .2s;}
+.res-link:hover{border-color:var(--accent);transform:translateY(-2px);}
+.res-tag{font-size:.58rem;letter-spacing:2px;text-transform:uppercase;font-family:'JetBrains Mono',monospace;padding:.1rem .4rem;border-radius:2px;display:inline-block;width:fit-content;}
+.tag-free{background:rgba(76,175,130,.15);color:var(--green);}.tag-paid{background:rgba(245,197,24,.15);color:var(--accent);}.tag-app{background:rgba(79,195,247,.15);color:var(--accent3);}.tag-yt{background:rgba(224,92,92,.15);color:var(--accent2);}
+.res-name{font-size:.82rem;color:var(--text);font-weight:700;}.res-desc{font-size:.7rem;color:var(--muted);line-height:1.4;}
+.month-section{margin-bottom:1.8rem;}
+.week-row{display:grid;grid-template-columns:85px 1fr;gap:.8rem;margin-bottom:.4rem;align-items:start;}
+.week-tag{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--accent);background:rgba(245,197,24,.08);padding:.3rem .4rem;text-align:center;border:1px solid rgba(245,197,24,.2);}
+.week-content{background:var(--card);border:1px solid var(--border);padding:.7rem .9rem;}
+.week-content h4{font-size:.82rem;margin-bottom:.4rem;color:var(--text);}
+.week-content ul{list-style:none;}
+.week-content ul li{font-size:.76rem;color:var(--muted);padding:.12rem 0;display:flex;align-items:flex-start;gap:.4rem;line-height:1.5;}
+.week-content ul li::before{content:'→';color:var(--accent);font-size:.68rem;margin-top:.1rem;flex-shrink:0;}
+
+/* PRACTICE */
+.practice-tabs{display:flex;gap:.4rem;margin-bottom:1.1rem;flex-wrap:wrap;}
+.ptab{padding:.45rem 1rem;font-size:.72rem;letter-spacing:1px;background:var(--card);border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:all .2s;font-family:'Noto Sans TC',sans-serif;}
+.ptab:hover{color:var(--text);}.ptab.active{background:rgba(76,175,130,.1);border-color:var(--green);color:var(--green);}
+.score-summary{display:flex;align-items:center;gap:1.3rem;background:var(--card);border:1px solid var(--border);padding:.8rem 1.2rem;margin-bottom:1.1rem;flex-wrap:wrap;}
+.ss-item{display:flex;flex-direction:column;gap:.15rem;}.ss-label{font-size:.58rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+.ss-val{font-family:'Bebas Neue',cursive;font-size:1.7rem;letter-spacing:2px;}
+.ss-val.g{color:var(--green);}.ss-val.y{color:var(--accent);}.ss-val.r{color:var(--accent2);}
+.btn-save{margin-left:auto;padding:.45rem 1.1rem;background:var(--green);color:#000;border:none;font-family:'Bebas Neue',cursive;font-size:.95rem;letter-spacing:2px;cursor:pointer;transition:all .2s;}
+.btn-save:hover{background:#5dd99a;}.btn-save:disabled{background:var(--border);color:var(--muted);cursor:default;}
+.quiz-section{display:none;}.quiz-section.active{display:block;}
+.quiz-card{background:var(--card);border:1px solid var(--border);padding:1.1rem;margin-bottom:.9rem;}
+.q-num{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--muted);margin-bottom:.4rem;letter-spacing:2px;}
+.q-text{font-size:.92rem;margin-bottom:.9rem;line-height:1.7;}
+.q-text em{font-style:normal;border-bottom:1px dashed var(--accent);color:var(--accent);}
+.q-passage{background:var(--surface);border-left:3px solid var(--accent3);padding:.8rem 1rem;font-size:.8rem;line-height:1.8;color:var(--muted);margin-bottom:.9rem;}
+.options{display:flex;flex-direction:column;gap:.35rem;}
+.option{padding:.5rem .8rem;border:1px solid var(--border);background:var(--surface);cursor:pointer;font-size:.8rem;transition:all .2s;text-align:left;color:var(--text);font-family:'Noto Sans TC',sans-serif;border-radius:2px;}
+.option:hover:not([disabled]){border-color:var(--accent);background:rgba(245,197,24,.05);}
+.option.correct{border-color:var(--green)!important;background:rgba(76,175,130,.15)!important;color:var(--green)!important;font-weight:700;}
+.option.wrong{border-color:var(--accent2)!important;background:rgba(224,92,92,.15)!important;color:var(--accent2)!important;}
+.option.show-correct{border-color:var(--green)!important;background:rgba(76,175,130,.12)!important;color:var(--green)!important;font-weight:700;}
+.opt-tag{font-size:.65rem;margin-left:.5rem;opacity:.9;font-family:'Noto Sans TC',sans-serif;}
+.feedback{margin-top:.6rem;padding:.6rem .8rem;background:var(--surface);font-size:.76rem;color:var(--muted);display:none;border-left:2px solid var(--green);line-height:1.6;}
+.feedback.show{display:block;}.feedback.wrong-fb{border-left-color:var(--accent2);}
+.vocab-grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:.7rem;margin-bottom:1.3rem;}
+.vocab-card{background:var(--card);border:1px solid var(--border);padding:.8rem;cursor:pointer;transition:all .2s;min-height:75px;}
+.vocab-card:hover{border-color:var(--accent);transform:translateY(-2px);}
+.vocab-card.flipped .vocab-front{display:none;}.vocab-card.flipped .vocab-back{display:block;}
+.vocab-front .word{font-family:'JetBrains Mono',monospace;font-size:.95rem;color:var(--accent);margin-bottom:.15rem;}
+.vocab-front .phonetic{font-size:.68rem;color:var(--muted);}
+.vocab-back{display:none;}.vocab-back .meaning{font-size:.82rem;color:var(--text);margin-bottom:.25rem;}
+.vocab-back .example{font-size:.7rem;color:var(--muted);font-style:italic;line-height:1.5;}
+.vocab-hint{font-size:.58rem;color:var(--muted);margin-top:.3rem;letter-spacing:1px;}
+
+/* TRACKER */
+.score-input-row{display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:1rem;align-items:flex-end;}
+.input-group{display:flex;flex-direction:column;gap:.35rem;}
+.input-group label{font-size:.62rem;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+.score-input{background:var(--card);border:1px solid var(--border);color:var(--text);padding:.5rem .65rem;font-family:'JetBrains Mono',monospace;font-size:.88rem;width:105px;outline:none;transition:border-color .2s;}
+.score-input:focus{border-color:var(--accent2);}.score-input.wide{width:145px;}
+.btn-add{padding:.5rem 1.2rem;background:var(--accent2);color:#fff;border:none;font-family:'Bebas Neue',cursive;font-size:.95rem;letter-spacing:2px;cursor:pointer;transition:all .2s;clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);}
+.btn-add:hover{background:#f07070;}
+.score-history{margin-top:.7rem;}
+.score-row{display:grid;grid-template-columns:115px 65px 65px 75px 65px 28px;gap:.4rem;padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.76rem;align-items:center;}
+.score-row.header{color:var(--muted);font-size:.62rem;letter-spacing:2px;text-transform:uppercase;}
+.up{color:var(--green);}.down{color:var(--accent2);}
+.chart-wrap{background:var(--card);border:1px solid var(--border);padding:1.2rem;margin-top:1.3rem;}
+.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.72rem;padding:.1rem .2rem;transition:color .2s;}
+.del-btn:hover{color:var(--accent2);}
+.ph-row{display:grid;grid-template-columns:130px 65px 65px 1fr;gap:.4rem;padding:.45rem 0;border-bottom:1px solid var(--border);font-size:.76rem;}
+.ph-row.header{color:var(--muted);font-size:.62rem;letter-spacing:2px;text-transform:uppercase;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+@media(max-width:600px){main{padding:1rem;}.score-row{grid-template-columns:85px 50px 50px 60px 48px 22px;font-size:.7rem;}}
+</style>
+</head>
+<body>
+
+<!-- ── FIREBASE SETUP GUIDE (shows only when config not filled) ── -->
+<div class="setup-overlay" id="setupOverlay" style="display:none">
+  <div class="setup-box">
+    <h2>🔥 Firebase 設定指南</h2>
+    <div class="setup-step"><div class="sn">1</div><div>前往 <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a>，點「新增專案」，輸入專案名稱（如 toeic990），關閉 Google Analytics，建立專案。</div></div>
+    <div class="setup-step"><div class="sn">2</div><div>進入專案後，點左側「<strong>Authentication</strong>」→「開始使用」→「Sign-in method」→ 啟用 <strong>Google</strong> 登入。</div></div>
+    <div class="setup-step"><div class="sn">3</div><div>點左側「<strong>Firestore Database</strong>」→「建立資料庫」→ 選「以測試模式開始」→ 選伺服器位置（asia-east1 最快）。</div></div>
+    <div class="setup-step"><div class="sn">4</div><div>點左上齒輪「<strong>專案設定</strong>」→ 向下滾找「您的應用程式」→ 點「&lt;/&gt;」網頁圖示 → 輸入應用程式暱稱 → 複製 <code>firebaseConfig</code> 的內容。</div></div>
+    <div class="setup-step"><div class="sn">5</div><div>用文字編輯器（記事本）開啟這個 HTML 檔，找到 <code>YOUR_API_KEY</code> 等欄位，貼上你的設定值，儲存。</div></div>
+    <div class="setup-step"><div class="sn">6</div><div>在 Firebase Console → Authentication → Settings → <strong>授權網域</strong>，加入你存放這個 HTML 的網域（或用 <a href="https://pages.github.com" target="_blank">GitHub Pages</a> 免費托管）。</div></div>
+    <div class="setup-note"><strong>💡 完全免費方案：</strong>Firebase 免費額度每天 50,000 次讀取、20,000 次寫入，個人學習完全夠用。托管推薦用 GitHub Pages（免費），把 HTML 上傳到 GitHub repo 即可。</div>
+    <button class="setup-close" onclick="document.getElementById('setupOverlay').style.display='none'">我知道了，繼續使用本機模式</button>
+  </div>
+</div>
+
+<!-- ── AUTH BAR ── -->
+<div class="auth-bar">
+  <button class="auth-btn google" id="loginBtn" onclick="fbSignIn()" style="display:none">
+    <svg width="14" height="14" viewBox="0 0 24 24"><path fill="#4fc3f7" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#4fc3f7" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#4fc3f7" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#4fc3f7" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+    用 Google 登入（雲端同步）
+  </button>
+  <span class="auth-user" id="userInfo"></span>
+  <button class="auth-btn logout" id="logoutBtn" onclick="fbSignOut()" style="display:none">登出</button>
+  <button class="auth-btn" onclick="document.getElementById('setupOverlay').style.display='flex'" style="border-color:rgba(245,197,24,.3);color:var(--accent)">⚙️ Firebase 設定說明</button>
+  <span class="sync-status warn" id="syncStatus">📱 本機模式</span>
+</div>
+
+<header>
+  <div class="header-top">
+    <div class="logo">TOEIC<span>990</span></div>
+    <div class="score-badge">目標 990</div>
+  </div>
+</header>
+<div class="progress-section">
+  <span class="progress-label">整體進度</span>
+  <div class="progress-bar-wrap"><div class="progress-bar-fill" id="mainProgress"></div></div>
+  <span class="progress-text" id="progressText">尚未記錄成績</span>
+</div>
+<div class="tabs">
+  <button class="tab active" onclick="showPanel('overview',this)">📊 總覽</button>
+  <button class="tab" onclick="showPanel('daily',this)">📖 每日學習</button>
+  <button class="tab" onclick="showPanel('schedule',this)">📅 學習計畫</button>
+  <button class="tab" onclick="showPanel('practice',this)">✏️ 練習題庫</button>
+  <button class="tab" onclick="showPanel('tracker',this)">📈 成績記錄</button>
+</div>
+
+<main>
+
+<!-- ====== OVERVIEW ====== -->
+<div class="panel active" id="panel-overview">
+  <div class="grid-3">
+    <div class="card yellow"><div class="card-label">第一個月目標</div><div class="card-title">打基礎 +150分</div><div class="card-body">每天切換：單字→文法→聽力輪替。先建立習慣，分數自然提升。</div></div>
+    <div class="card red"><div class="card-label">最高 CP 值</div><div class="card-title">Part 5 文法先攻</div><div class="card-body">30題文法選擇，規律最強。每天20題，1個月就能明顯提升閱讀分。</div></div>
+    <div class="card blue"><div class="card-label">每日必做</div><div class="card-title">單字 +10 個</div><div class="card-body">每日學習頁面內建每天10個新單字，翻牌記憶，30天累積300個核心詞彙。</div></div>
+  </div>
+  <div class="tip-box"><strong>⚡ 使用方式：</strong>點「每日學習」，系統自動載入今天的課程（單字＋文法＋聽力），展開後直接學習，完成後打勾，成績自動儲存。</div>
+  <div class="grid-2">
+    <div class="card green"><div class="card-label">多益考試結構</div><div class="card-title">聽力 495 ＋ 閱讀 495</div><div class="card-body">
+      <span style="color:var(--accent3)">◆ 聽力（100題）</span><br>Part 1 照片 6題 · Part 2 應答 25題<br>Part 3 對話 39題 · Part 4 獨白 30題<br><br>
+      <span style="color:var(--green)">◆ 閱讀（100題）</span><br>Part 5 填空 30題 · Part 6 短文 16題 · Part 7 閱讀 54題
+    </div></div>
+    <div class="card yellow"><div class="card-label">3個月路線圖</div><div class="card-title">務實期望值</div><div class="card-body">
+      <span style="color:var(--accent)">▶ 第1個月</span>　打基礎 → 目標 550~600分<br><br>
+      <span style="color:var(--accent)">▶ 第2個月</span>　強化弱點 → 目標 650~750分<br><br>
+      <span style="color:var(--accent)">▶ 第3個月</span>　全真模擬 → 目標 750~850分<br><br>
+      <span style="color:var(--muted)">※ 990滿分需12-24個月持續努力</span>
+    </div></div>
+  </div>
+</div>
+
+<!-- ====== DAILY LEARNING ====== -->
+<div class="panel" id="panel-daily">
+  <div class="s-title green">每日學習課程</div>
+  <div class="day-nav">
+    <button class="day-btn" onclick="changeDay(-1)">← 前一天</button>
+    <div>
+      <div class="day-display" id="dayLabel">Day 1</div>
+      <div class="day-date" id="dayDate"></div>
+    </div>
+    <button class="day-btn" onclick="changeDay(1)">後一天 →</button>
+    <div class="day-completed" id="dayCompleted"></div>
+  </div>
+
+  <div class="week-dots" id="weekDots"></div>
+
+  <div id="dailyContent"></div>
+</div>
+
+<!-- ====== SCHEDULE ====== -->
+<div class="panel" id="panel-schedule">
+  <div class="s-title yellow">3個月學習計畫</div>
+  <div class="sub-label">立即可用的資源 — 點擊直接開工</div>
+  <div class="res-grid">
+    <a class="res-link" href="https://www.toeicworld.com.tw/sample_questions" target="_blank"><span class="res-tag tag-free">FREE</span><span class="res-name">ETS 官方範例題</span><span class="res-desc">最接近真題，Part 1-7 全部有</span></a>
+    <a class="res-link" href="https://learningenglish.voanews.com/z/3613" target="_blank"><span class="res-tag tag-free">FREE</span><span class="res-name">VOA 慢速英語</span><span class="res-desc">每日更新，適合聽力跟讀，語速慢</span></a>
+    <a class="res-link" href="https://www.youtube.com/@cnn10" target="_blank"><span class="res-tag tag-yt">YOUTUBE</span><span class="res-name">CNN 10</span><span class="res-desc">每天10分鐘英語新聞，提升語感</span></a>
+    <a class="res-link" href="https://ankiweb.net/decks/" target="_blank"><span class="res-tag tag-app">APP</span><span class="res-name">Anki 單字牌組</span><span class="res-desc">下載多益專用牌組，間隔重複</span></a>
+    <a class="res-link" href="https://quizlet.com/subject/toeic/" target="_blank"><span class="res-tag tag-free">FREE</span><span class="res-name">Quizlet TOEIC</span><span class="res-desc">大量多益單字牌組，線上練習</span></a>
+    <a class="res-link" href="https://www.youtube.com/results?search_query=TOEIC+Part+5+grammar+2024" target="_blank"><span class="res-tag tag-yt">YOUTUBE</span><span class="res-name">Part 5 文法講解</span><span class="res-desc">大量免費文法教學影片</span></a>
+    <a class="res-link" href="https://www.toeic.com.tw/toeic-online-learning.html" target="_blank"><span class="res-tag tag-paid">付費</span><span class="res-name">ETS 台灣線上學習</span><span class="res-desc">官方平台，最接近真實考試</span></a>
+    <a class="res-link" href="https://www.bbc.co.uk/learningenglish/english/features/6-minute-english" target="_blank"><span class="res-tag tag-free">FREE</span><span class="res-name">BBC 6 Minute English</span><span class="res-desc">含文字稿，英式口音訓練</span></a>
+  </div>
+  <hr class="div">
+  <div class="month-section">
+    <div class="sub-label">第一個月 — 打基礎</div>
+    <div style="display:flex;flex-direction:column;gap:.4rem">
+      <div class="week-row"><div class="week-tag">Week 1</div><div class="week-content"><h4>診斷 + 建立系統</h4><ul><li>ETS 官方範例做完整診斷，找出弱點 Part</li><li>每日學習頁面：Day 1 開始，每天完成課程</li><li>Part 5 文法：每天 10 題 + 分析錯誤</li></ul></div></div>
+      <div class="week-row"><div class="week-tag">Week 2</div><div class="week-content"><h4>文法系統學習</h4><ul><li>高頻文法：時態 / 詞性 / 介系詞 / 連接詞</li><li>Part 5 每天 20 題，建立「錯題本」</li><li>VOA 慢速英語跟讀 15 分鐘</li></ul></div></div>
+      <div class="week-row"><div class="week-tag">Week 3</div><div class="week-content"><h4>聽力 Part 1 + 2</h4><ul><li>Part 1 場景描述詞彙：辦公室/街道/會議室</li><li>Part 2 應答句型：10 種問答模式</li><li>CNN 10 加入每日練習</li></ul></div></div>
+      <div class="week-row"><div class="week-tag">Week 4</div><div class="week-content"><h4>月底診斷測驗</h4><ul><li>做完整模擬試題，對比初始成績</li><li>分析各 Part 失分，調整下月重點</li></ul></div></div>
+    </div>
+  </div>
+  <div class="month-section">
+    <div class="sub-label">第二個月 — 強化弱點</div>
+    <div style="display:flex;flex-direction:column;gap:.4rem">
+      <div class="week-row"><div class="week-tag">Week 5-6</div><div class="week-content"><h4>聽力 Part 3 + 4 攻略</h4><ul><li>預讀題目技巧：對話前先看選項</li><li>每天 Part 3/4 各 1 組（3題）</li></ul></div></div>
+      <div class="week-row"><div class="week-tag">Week 7-8</div><div class="week-content"><h4>閱讀 Part 6 + 7</h4><ul><li>Part 6 上下文邏輯填空</li><li>Part 7 速讀：先看題目再找關鍵字</li><li>每週 1 次完整模擬</li></ul></div></div>
+    </div>
+  </div>
+  <div class="month-section">
+    <div class="sub-label">第三個月 — 全真模擬衝刺</div>
+    <div style="display:flex;flex-direction:column;gap:.4rem">
+      <div class="week-row"><div class="week-tag">Week 9-10</div><div class="week-content"><h4>每週 2 次全真模擬</h4><ul><li>完整 2 小時，不暫停不查字典</li><li>每次詳細分析弱點 Part</li></ul></div></div>
+      <div class="week-row"><div class="week-tag">Week 11-12</div><div class="week-content"><h4>高頻錯誤修正 + 衝刺</h4><ul><li>複習錯題本，整理高頻錯誤筆記</li><li>ETS 官方最新題庫衝刺</li></ul></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== PRACTICE ====== -->
+<div class="panel" id="panel-practice">
+  <div class="s-title green">練習題庫</div>
+  <div class="practice-tabs">
+    <button class="ptab active" onclick="showPTab('grammar',this)">📝 Part 5 文法（10題）</button>
+    <button class="ptab" onclick="showPTab('reading',this)">📖 Part 7 閱讀（5題）</button>
+    <button class="ptab" onclick="showPTab('vocab',this)">🃏 單字翻牌（12個）</button>
+  </div>
+  <div class="score-summary" id="scoreSummary">
+    <div class="ss-item"><div class="ss-label">答題數</div><div class="ss-val y" id="ssTotal">0</div></div>
+    <div class="ss-item"><div class="ss-label">答對</div><div class="ss-val g" id="ssCorrect">0</div></div>
+    <div class="ss-item"><div class="ss-label">答錯</div><div class="ss-val r" id="ssWrong">0</div></div>
+    <div class="ss-item"><div class="ss-label">正確率</div><div class="ss-val y" id="ssRate">—</div></div>
+    <button class="btn-save" id="btnSave" onclick="savePracticeScore()" disabled>💾 儲存</button>
+  </div>
+  <div class="quiz-section active" id="qs-grammar">
+    <div class="sub-label green">Part 5 — 高頻文法（10題）</div>
+    <div class="quiz-card"><div class="q-num">Q1 · 詞性</div><div class="q-text">The manager gave a <em>______</em> presentation to the board of directors.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,0,'A')">（A）impress</button><button class="option" data-lbl="B" onclick="ans(this,0,'B')">（B）impressive</button><button class="option" data-lbl="C" onclick="ans(this,0,'C')">（C）impression</button><button class="option" data-lbl="D" onclick="ans(this,0,'D')">（D）impressively</button></div><div class="feedback" id="fb0"></div></div>
+    <div class="quiz-card"><div class="q-num">Q2 · 介系詞</div><div class="q-text">The company has been <em>______</em> business for over 50 years.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,1,'A')">（A）at</button><button class="option" data-lbl="B" onclick="ans(this,1,'B')">（B）in</button><button class="option" data-lbl="C" onclick="ans(this,1,'C')">（C）on</button><button class="option" data-lbl="D" onclick="ans(this,1,'D')">（D）for</button></div><div class="feedback" id="fb1"></div></div>
+    <div class="quiz-card"><div class="q-num">Q3 · 未來完成式</div><div class="q-text">By the time the CEO arrives, the team <em>______</em> the report.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,2,'A')">（A）finished</button><button class="option" data-lbl="B" onclick="ans(this,2,'B')">（B）finishes</button><button class="option" data-lbl="C" onclick="ans(this,2,'C')">（C）will have finished</button><button class="option" data-lbl="D" onclick="ans(this,2,'D')">（D）had finished</button></div><div class="feedback" id="fb2"></div></div>
+    <div class="quiz-card"><div class="q-num">Q4 · 連接詞</div><div class="q-text"><em>______</em> the price is high, the product sells well because of its quality.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,3,'A')">（A）Although</button><button class="option" data-lbl="B" onclick="ans(this,3,'B')">（B）Because</button><button class="option" data-lbl="C" onclick="ans(this,3,'C')">（C）Unless</button><button class="option" data-lbl="D" onclick="ans(this,3,'D')">（D）Therefore</button></div><div class="feedback" id="fb3"></div></div>
+    <div class="quiz-card"><div class="q-num">Q5 · 所有格</div><div class="q-text">Employees should submit <em>______</em> expense reports by Friday.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,4,'A')">（A）they</button><button class="option" data-lbl="B" onclick="ans(this,4,'B')">（B）them</button><button class="option" data-lbl="C" onclick="ans(this,4,'C')">（C）their</button><button class="option" data-lbl="D" onclick="ans(this,4,'D')">（D）themselves</button></div><div class="feedback" id="fb4"></div></div>
+    <div class="quiz-card"><div class="q-num">Q6 · 現在完成式</div><div class="q-text">Since the new policy was introduced, customer complaints <em>______</em> significantly.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,5,'A')">（A）decreased</button><button class="option" data-lbl="B" onclick="ans(this,5,'B')">（B）have decreased</button><button class="option" data-lbl="C" onclick="ans(this,5,'C')">（C）decrease</button><button class="option" data-lbl="D" onclick="ans(this,5,'D')">（D）will decrease</button></div><div class="feedback" id="fb5"></div></div>
+    <div class="quiz-card"><div class="q-num">Q7 · 詞性（名詞）</div><div class="q-text">The new software has greatly improved the <em>______</em> of our team.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,6,'A')">（A）productive</button><button class="option" data-lbl="B" onclick="ans(this,6,'B')">（B）productively</button><button class="option" data-lbl="C" onclick="ans(this,6,'C')">（C）productivity</button><button class="option" data-lbl="D" onclick="ans(this,6,'D')">（D）produce</button></div><div class="feedback" id="fb6"></div></div>
+    <div class="quiz-card"><div class="q-num">Q8 · 被動語態</div><div class="q-text">The annual report <em>______</em> by the accounting department every December.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,7,'A')">（A）prepares</button><button class="option" data-lbl="B" onclick="ans(this,7,'B')">（B）is prepared</button><button class="option" data-lbl="C" onclick="ans(this,7,'C')">（C）preparing</button><button class="option" data-lbl="D" onclick="ans(this,7,'D')">（D）has prepared</button></div><div class="feedback" id="fb7"></div></div>
+    <div class="quiz-card"><div class="q-num">Q9 · 比較級</div><div class="q-text">This year's sales figures are <em>______</em> than those recorded last year.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,8,'A')">（A）more higher</button><button class="option" data-lbl="B" onclick="ans(this,8,'B')">（B）highest</button><button class="option" data-lbl="C" onclick="ans(this,8,'C')">（C）higher</button><button class="option" data-lbl="D" onclick="ans(this,8,'D')">（D）high</button></div><div class="feedback" id="fb8"></div></div>
+    <div class="quiz-card"><div class="q-num">Q10 · suggest + Ving</div><div class="q-text">The director suggested <em>______</em> the meeting until next week.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,9,'A')">（A）to postpone</button><button class="option" data-lbl="B" onclick="ans(this,9,'B')">（B）postponing</button><button class="option" data-lbl="C" onclick="ans(this,9,'C')">（C）postponed</button><button class="option" data-lbl="D" onclick="ans(this,9,'D')">（D）postpone</button></div><div class="feedback" id="fb9"></div></div>
+  </div>
+  <div class="quiz-section" id="qs-reading">
+    <div class="sub-label green">Part 7 — 商業備忘錄（5題）</div>
+    <div class="quiz-card">
+      <div class="q-num">閱讀文章後回答 Q11-Q15</div>
+      <div class="q-passage"><strong>MEMORANDUM</strong><br>To: All Staff | From: Human Resources | Date: October 15<br>Subject: Updated Remote Work Policy<br><br>Effective November 1, all employees are permitted to work remotely up to three days per week. To qualify, employees must have completed at least six months of service and received a satisfactory performance review.<br><br>Requests must be submitted to your direct supervisor at least five business days in advance. Employees must be available during core hours (9 AM – 3 PM) and attend all meetings in person or via video conference.<br><br>For questions, contact HR at hr@company.com or extension 204.</div>
+      <div class="sub-quiz" style="margin-bottom:1rem"><div class="q-num" style="margin-top:.8rem">Q11 · 主旨</div><div class="q-text">What is the main purpose of this memo?</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,10,'A')">（A）To announce new office hours</button><button class="option" data-lbl="B" onclick="ans(this,10,'B')">（B）To inform staff about a new remote work policy</button><button class="option" data-lbl="C" onclick="ans(this,10,'C')">（C）To request employees to work overtime</button><button class="option" data-lbl="D" onclick="ans(this,10,'D')">（D）To introduce a new performance review system</button></div><div class="feedback" id="fb10"></div></div>
+      <div class="sub-quiz" style="margin-bottom:1rem"><div class="q-num">Q12 · 細節</div><div class="q-text">How many days in advance must employees submit requests?</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,11,'A')">（A）Three business days</button><button class="option" data-lbl="B" onclick="ans(this,11,'B')">（B）One week</button><button class="option" data-lbl="C" onclick="ans(this,11,'C')">（C）Five business days</button><button class="option" data-lbl="D" onclick="ans(this,11,'D')">（D）Ten business days</button></div><div class="feedback" id="fb11"></div></div>
+      <div class="sub-quiz" style="margin-bottom:1rem"><div class="q-num">Q13 · 條件</div><div class="q-text">What is a requirement to qualify for remote work?</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,12,'A')">（A）Completing one year of service</button><button class="option" data-lbl="B" onclick="ans(this,12,'B')">（B）Having a home office setup</button><button class="option" data-lbl="C" onclick="ans(this,12,'C')">（C）Six months of service and a satisfactory review</button><button class="option" data-lbl="D" onclick="ans(this,12,'D')">（D）Approval from the HR director</button></div><div class="feedback" id="fb12"></div></div>
+      <div class="sub-quiz" style="margin-bottom:1rem"><div class="q-num">Q14 · 細節</div><div class="q-text">During which hours must remote employees be available?</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,13,'A')">（A）8 AM – 5 PM</button><button class="option" data-lbl="B" onclick="ans(this,13,'B')">（B）9 AM – 3 PM</button><button class="option" data-lbl="C" onclick="ans(this,13,'C')">（C）10 AM – 4 PM</button><button class="option" data-lbl="D" onclick="ans(this,13,'D')">（D）9 AM – 5 PM</button></div><div class="feedback" id="fb13"></div></div>
+      <div class="sub-quiz"><div class="q-num">Q15 · 推論</div><div class="q-text">What can be inferred from the memo?</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,14,'A')">（A）Employees have never worked from home before</button><button class="option" data-lbl="B" onclick="ans(this,14,'B')">（B）The policy is being updated, suggesting it may have existed before</button><button class="option" data-lbl="C" onclick="ans(this,14,'C')">（C）All employees currently work from home full time</button><button class="option" data-lbl="D" onclick="ans(this,14,'D')">（D）The company plans to close its office</button></div><div class="feedback" id="fb14"></div></div>
+    </div>
+  </div>
+  <div class="quiz-section" id="qs-vocab">
+    <div class="sub-label green">商業英語單字翻牌（12個）</div>
+    <div class="vocab-grid2" id="practiceVocab"></div>
+  </div>
+</div>
+
+<!-- ====== TRACKER ====== -->
+<div class="panel" id="panel-tracker">
+  <div class="s-title red">成績記錄</div>
+  <div class="grid-2">
+    <div class="card red">
+      <div class="card-label">練習成績（自動儲存）</div>
+      <div class="card-title" style="font-size:1rem;margin-bottom:.7rem">每次練習記錄</div>
+      <div class="score-history"><div class="ph-row header"><span>時間</span><span>正確率</span><span>題型</span><span>答對/題</span></div><div id="practiceHistory"></div></div>
+    </div>
+    <div class="card yellow">
+      <div class="card-label">模擬考試成績（手動輸入）</div>
+      <div class="card-title" style="font-size:1rem;margin-bottom:.7rem">考試記錄</div>
+      <div class="score-input-row">
+        <div class="input-group"><label>日期</label><input type="date" class="score-input wide" id="scoreDate"></div>
+        <div class="input-group"><label>聽力</label><input type="number" class="score-input" id="listenScore" placeholder="0-495" min="0" max="495"></div>
+        <div class="input-group"><label>閱讀</label><input type="number" class="score-input" id="readScore" placeholder="0-495" min="0" max="495"></div>
+        <button class="btn-add" onclick="addScore()">記錄</button>
+      </div>
+      <div class="score-history"><div class="score-row header"><span>日期</span><span>聽力</span><span>閱讀</span><span>總分</span><span>變化</span><span></span></div><div id="scoreList"></div></div>
+    </div>
+  </div>
+  <div class="chart-wrap" id="chartWrap" style="display:none">
+    <div style="font-size:.65rem;letter-spacing:2px;color:var(--muted);margin-bottom:.8rem">模擬考分數趨勢</div>
+    <canvas id="scoreChart" height="170"></canvas>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ===========================
+// SYNC HELPERS
+// ===========================
+function showSyncStatus(msg, type) {
+  const el = document.getElementById('syncStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'sync-status ' + (type || 'ok');
+}
+
+function saveData(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+  if (window.saveCloud) window.saveCloud(key, value);
+}
+
+function saveDataRaw(key, value) {
+  localStorage.setItem(key, value);
+  if (window.saveCloud) window.saveCloud(key, value);
+}
+
+// ===========================
+// DAILY LESSON DATA
+// ===========================
+const DAILY = [
+  // Day 1
+  {
+    vocab:{title:'辦公室基礎詞彙',words:[
+      {w:'negotiate',ph:'/nɪˈɡoʊʃieɪt/',pos:'v.',tw:'協商、談判',ex:'We need to negotiate a new contract with the supplier.'},
+      {w:'reimburse',ph:'/ˌriːɪmˈbɜːrs/',pos:'v.',tw:'報銷、退款',ex:'The company will reimburse all travel expenses.'},
+      {w:'collaborate',ph:'/kəˈlæbəreɪt/',pos:'v.',tw:'合作、協作',ex:'The two departments collaborated on the project.'},
+      {w:'revenue',ph:'/ˈrevənuː/',pos:'n.',tw:'收益、營業額',ex:"The company's revenue increased by 20% last year."},
+      {w:'implement',ph:'/ˈɪmplɪment/',pos:'v.',tw:'實施、執行',ex:'We will implement the new policy next month.'},
+      {w:'inventory',ph:'/ˈɪnvəntɔːri/',pos:'n.',tw:'庫存、存貨清單',ex:'Please check the inventory before placing an order.'},
+      {w:'agenda',ph:'/əˈdʒendə/',pos:'n.',tw:'議程、待辦事項',ex:'The first item on the agenda is budget review.'},
+      {w:'deadline',ph:'/ˈdedlaɪn/',pos:'n.',tw:'截止日期',ex:'The deadline for submissions is this Friday.'},
+      {w:'allocate',ph:'/ˈæləkeɪt/',pos:'v.',tw:'分配、撥款',ex:'The budget was allocated across departments.'},
+      {w:'proficient',ph:'/prəˈfɪʃnt/',pos:'adj.',tw:'熟練的、精通的',ex:'She is proficient in three programming languages.'},
+    ],note:'<strong>學習重點：</strong>今天10個都是多益高頻商業詞彙，特別注意 reimburse（報銷）和 allocate（分配）—這兩個詞常出現在 Part 5 和 Part 7。'},
+    grammar:{title:'詞性判斷（Part 5 最高頻）',rules:[
+      {r:'<strong>名詞位置</strong>：冠詞（a/an/the）後、形容詞後、介系詞後<br><span class="formula">the ___（名詞）/ a ___（名詞）/ of ___（名詞）</span>'},
+      {r:'<strong>形容詞位置</strong>：名詞前、be 動詞後<br><span class="formula">a ___ report（形容詞修飾名詞）/ is ___（形容詞）</span>'},
+      {r:'<strong>副詞位置</strong>：修飾動詞、形容詞、其他副詞<br><span class="formula">works ___ fast（副詞）/ ___ important（副詞修飾形容詞）</span>'},
+    ],qs:[
+      {q:'The new software offers a <em>______</em> solution for data management.',opts:['A. effect','B. effectively','C. effective','D. effectiveness'],a:'C',exp:'冠詞 a 後面接名詞，但此處 a ___ solution，空格在冠詞和名詞之間，需要<strong>形容詞</strong>修飾 solution。effective（有效的）。'},
+      {q:'The director spoke <em>______</em> about the company\'s future plans.',opts:['A. enthusiastic','B. enthusiasm','C. enthusiastically','D. enthuse'],a:'C',exp:'動詞 spoke 後面接<strong>副詞</strong>修飾說話方式。enthusiastically（熱情地）。'},
+      {q:'All employees must complete the <em>______</em> training before starting.',opts:['A. mandate','B. mandatory','C. mandatorily','D. mandated'],a:'B',exp:'the ___ training，冠詞和名詞之間需要<strong>形容詞</strong>。mandatory（強制的）。'},
+      {q:'The <em>______</em> of the new policy has improved office efficiency.',opts:['A. implement','B. implementer','C. implementation','D. implementing'],a:'C',exp:'定冠詞 The 後面需要<strong>名詞</strong>作主詞。implementation（實施、執行）是正確的名詞形式。'},
+    ]},
+    listen:{title:'VOA 商業英語 — 辦公室場景',url:'https://learningenglish.voanews.com/z/3613',urlLabel:'前往 VOA →',steps:['前往 VOA，選一篇約 2-3 分鐘的文章','先聽一遍，不看文字，嘗試理解大意','對照文字聽第二遍，圈出不認識的詞','選以下 5 個影子跟讀重點詞，大聲跟讀'],shadowWords:['conference call','quarterly report','budget allocation','performance review','market expansion'],transcript:'<strong>練習重點短句（跟讀）：</strong><br>"The board of directors will <strong>convene</strong> next Monday to discuss the <strong>quarterly results</strong>."<br>"Please <strong>submit</strong> your <strong>expense reports</strong> by the end of the week."<br>"The project is <strong>on schedule</strong> and within <strong>budget</strong>."',lqs:[
+      {q:'在商業英語中，"convene a meeting" 的意思是？',opts:['A. 取消會議','B. 召開會議','C. 延後會議','D. 準備會議資料'],a:'B',exp:'convene = 召集、召開（正式會議）。常見於 Part 3/4 的商業對話場景。'},
+    ]}
+  },
+  // Day 2
+  {
+    vocab:{title:'商業財務詞彙',words:[
+      {w:'revenue',ph:'/ˈrevənuː/',pos:'n.',tw:'收益、營業額',ex:"Quarterly revenue exceeded the company's expectations."},
+      {w:'expenditure',ph:'/ɪkˈspendɪtʃə/',pos:'n.',tw:'支出、費用',ex:'The expenditure on marketing increased by 15%.'},
+      {w:'deficit',ph:'/ˈdefɪsɪt/',pos:'n.',tw:'赤字、虧損',ex:'The company reported a deficit for the first time.'},
+      {w:'dividend',ph:'/ˈdɪvɪdend/',pos:'n.',tw:'股息、紅利',ex:'Shareholders will receive a dividend this quarter.'},
+      {w:'invoice',ph:'/ˈɪnvɔɪs/',pos:'n.',tw:'發票、帳單',ex:'Please send the invoice to the accounting department.'},
+      {w:'fiscal',ph:'/ˈfɪskl/',pos:'adj.',tw:'財政的、會計的',ex:'The fiscal year ends on December 31.'},
+      {w:'asset',ph:'/ˈæset/',pos:'n.',tw:'資產',ex:'The company sold several assets to pay off debt.'},
+      {w:'liability',ph:'/ˌlaɪəˈbɪləti/',pos:'n.',tw:'負債、責任',ex:'The firm has significant liabilities on its balance sheet.'},
+      {w:'merger',ph:'/ˈmɜːdʒər/',pos:'n.',tw:'合併（公司）',ex:'The merger was approved by both boards.'},
+      {w:'acquisition',ph:'/ˌækwɪˈzɪʃn/',pos:'n.',tw:'收購、併購',ex:'The acquisition of the startup was completed last month.'},
+    ],note:'<strong>財務詞彙記憶法：</strong>revenue（進）vs expenditure（出）vs deficit（赤字）三個要一起記。asset（資產）vs liability（負債）是資產負債表的兩大欄位。'},
+    grammar:{title:'介系詞高頻考點（Part 5）',rules:[
+      {r:'<strong>時間介系詞</strong>：by（不遲於）/ until（持續到）/ within（在…之內）<br><span class="formula">Submit by Friday（截止週五）/ valid until March（有效到3月）</span>'},
+      {r:'<strong>地點介系詞</strong>：at（點）/ in（大範圍）/ on（面）<br><span class="formula">at the office / in New York / on the third floor</span>'},
+      {r:'<strong>固定搭配</strong>：responsible for / in charge of / result in / apply for<br><span class="formula">be responsible for the project（負責）</span>'},
+    ],qs:[
+      {q:'The payment must be made <em>______</em> the end of the month.',opts:['A. until','B. by','C. within','D. on'],a:'B',exp:'by = 不遲於某時間點（截止）。until = 持續到某時間點（兩者意思不同！）by the end of the month = 月底前完成。'},
+      {q:'Ms. Chen is responsible <em>______</em> managing the overseas accounts.',opts:['A. of','B. to','C. for','D. about'],a:'C',exp:'be responsible for 是固定搭配，表示「對…負責」。這是 Part 5 最常考的固定搭配之一。'},
+      {q:'The new branch will open <em>______</em> downtown Tokyo.',opts:['A. on','B. at','C. in','D. with'],a:'C',exp:'in + 城市/地區（大範圍）。at + 具體地址。in downtown Tokyo（在東京市中心）。'},
+      {q:'The project was delayed <em>______</em> unexpected technical issues.',opts:['A. because','B. due to','C. result in','D. owing'],a:'B',exp:'due to + 名詞（因為…）= because of + 名詞。result in = 導致（因果相反！）。owing to 也可以但不是最佳選項。'},
+    ]},
+    listen:{title:'CNN 10 — 商業新聞練習',url:'https://www.youtube.com/@cnn10',urlLabel:'前往 CNN 10 →',steps:['點擊進入 CNN 10 YouTube 頻道','選最新一集（約 10 分鐘）','先不開字幕聽前 3 分鐘，寫下聽到的關鍵詞','再開字幕重聽，對比理解差異'],shadowWords:['economic growth','trade deficit','stock market','interest rates','consumer spending'],transcript:'<strong>商業新聞常見句型（跟讀）：</strong><br>"The economy <strong>contracted</strong> by 0.5 percent in the last quarter."<br>"Investors are <strong>concerned about</strong> rising interest rates."<br>"The deal is expected to <strong>close</strong> by the end of the year."',lqs:[
+      {q:'"The deal is expected to close by year end." 這句話表示什麼？',opts:['A. 這筆交易已完成','B. 這筆交易預計年底完成','C. 這筆交易年底取消','D. 這筆交易需要延期'],a:'B',exp:'is expected to close = 預計完成。by year end = 在年底前。這是 Part 4 獨白常見的商業新聞句型。'},
+    ]}
+  },
+  // Day 3
+  {
+    vocab:{title:'人力資源詞彙',words:[
+      {w:'recruit',ph:'/rɪˈkruːt/',pos:'v.',tw:'招募、招聘',ex:'The company is recruiting experienced engineers.'},
+      {w:'candidate',ph:'/ˈkændɪdət/',pos:'n.',tw:'候選人、應徵者',ex:'Three candidates were shortlisted for the position.'},
+      {w:'probation',ph:'/prəˈbeɪʃn/',pos:'n.',tw:'試用期',ex:'New employees undergo a three-month probation period.'},
+      {w:'resignation',ph:'/ˌrezɪɡˈneɪʃn/',pos:'n.',tw:'辭職',ex:'Her resignation surprised the entire team.'},
+      {w:'appraisal',ph:'/əˈpreɪzl/',pos:'n.',tw:'績效考核',ex:'Annual appraisals are conducted every December.'},
+      {w:'promotion',ph:'/prəˈmoʊʃn/',pos:'n.',tw:'升遷、晉升',ex:'She received a promotion after the successful project.'},
+      {w:'compensate',ph:'/ˈkɒmpenseɪt/',pos:'v.',tw:'補償、報酬',ex:'Employees are compensated for overtime work.'},
+      {w:'orientation',ph:'/ˌɔːriənˈteɪʃn/',pos:'n.',tw:'新人入職培訓',ex:'New staff must attend a two-day orientation.'},
+      {w:'turnover',ph:'/ˈtɜːnoʊvər/',pos:'n.',tw:'離職率、員工流動',ex:'High turnover is costly for companies.'},
+      {w:'incentive',ph:'/ɪnˈsentɪv/',pos:'n.',tw:'獎勵、誘因',ex:'Performance bonuses are used as incentives.'},
+    ],note:'<strong>HR 詞彙記憶組：</strong>recruit（招）→ candidate（應徵者）→ probation（試用）→ appraisal（考核）→ promotion（升遷）是一個完整的員工生命週期，這樣記比較容易！'},
+    grammar:{title:'動詞時態（現在完成 vs 過去式）',rules:[
+      {r:'<strong>現在完成式</strong>：have/has + p.p.，強調「到現在為止」的狀態<br><span class="formula">The company has expanded to 20 countries.（現在已擴展到）</span>'},
+      {r:'<strong>過去式</strong>：強調「過去某時間點」完成的動作，常搭配 last year / in 2020 / yesterday<br><span class="formula">The company expanded in 2015.（2015年擴展）</span>'},
+      {r:'<strong>since / for 判斷法</strong>：since + 時間點 → 現在完成式；for + 時間段 → 現在完成式<br><span class="formula">I have worked here since 2019 / for five years.</span>'},
+    ],qs:[
+      {q:'The team <em>______</em> three major projects since last January.',opts:['A. completed','B. has completed','C. completes','D. will complete'],a:'B',exp:'since last January 搭配<strong>現在完成式</strong>。since + 過去時間點，主句必須用 have/has + p.p.。'},
+      {q:'She <em>______</em> the annual report yesterday afternoon.',opts:['A. has submitted','B. submits','C. submitted','D. had submitted'],a:'C',exp:'yesterday 明確指出過去時間點，必須用<strong>過去式</strong>。現在完成式不能和 yesterday 連用。'},
+      {q:'This is the first time he <em>______</em> a keynote speech.',opts:['A. gives','B. has given','C. gave','D. is giving'],a:'B',exp:'This is the first time... 固定搭配<strong>現在完成式</strong>。表示「這是他第一次做…（到現在為止）」。'},
+      {q:'The policy <em>______</em> in effect for three years.',opts:['A. was','B. is','C. has been','D. had been'],a:'C',exp:'for three years + 現在仍在生效，用<strong>現在完成式</strong>。has been in effect（一直有效到現在）。'},
+    ]},
+    listen:{title:'Part 2 應答練習 — 問答句型',url:'https://www.youtube.com/results?search_query=TOEIC+Part+2+practice+questions+2024',urlLabel:'搜尋 Part 2 練習 →',steps:['搜尋 YouTube：TOEIC Part 2 practice questions','選有 WH 問句練習的影片','練習聽問句 → 選答案 → 對答案','注意：Part 2 最大陷阱是「間接回答」'],shadowWords:['Would you like to...','Could you please...','Have you already...','When is the meeting...','Who is responsible for...'],transcript:'<strong>Part 2 高頻句型（跟讀）：</strong><br>"<strong>When</strong> will the shipment arrive?" — "It\'s <strong>scheduled for</strong> Thursday."<br>"<strong>Who</strong> is handling the client presentation?" — "I believe <strong>Sarah</strong> is."<br>"<strong>Have you reviewed</strong> the proposal?" — "Not <strong>yet</strong>, I\'ll do it this afternoon."',lqs:[
+      {q:'"Have you already spoken with the client?" 最自然的回答是？',opts:['A. Yes, I speak English well.','B. No, the client is in Tokyo.','C. Not yet, I\'ll call them this afternoon.','D. Yes, the meeting is at 3 PM.'],a:'C',exp:'Have you already...? 問是否已完成某事。Not yet（尚未）是最直接的回答。這是 Part 2 最常見的「間接回答」模式。'},
+    ]}
+  },
+  // Day 4
+  {
+    vocab:{title:'會議與溝通詞彙',words:[
+      {w:'agenda',ph:'/əˈdʒendə/',pos:'n.',tw:'議程',ex:'Please review the agenda before the meeting.'},
+      {w:'minutes',ph:'/ˈmɪnɪts/',pos:'n.',tw:'會議記錄',ex:'The minutes of the meeting were distributed by email.'},
+      {w:'adjourn',ph:'/əˈdʒɜːn/',pos:'v.',tw:'休會、延期',ex:'The meeting was adjourned until the following week.'},
+      {w:'consensus',ph:'/kənˈsensəs/',pos:'n.',tw:'共識',ex:'The team reached a consensus on the new strategy.'},
+      {w:'clarify',ph:'/ˈklærɪfaɪ/',pos:'v.',tw:'澄清、說明',ex:'Could you clarify what you mean by that?'},
+      {w:'postpone',ph:'/pəˈstpoʊn/',pos:'v.',tw:'延期、推遲',ex:'The conference was postponed due to the weather.'},
+      {w:'facilitate',ph:'/fəˈsɪlɪteɪt/',pos:'v.',tw:'促進、主持',ex:'She facilitated the discussion between two teams.'},
+      {w:'proposal',ph:'/prəˈpoʊzl/',pos:'n.',tw:'提案、建議書',ex:'The proposal was approved by the committee.'},
+      {w:'delegate',ph:'/ˈdelɪɡeɪt/',pos:'v.',tw:'授權、委派',ex:'He delegated the task to his assistant.'},
+      {w:'initiative',ph:'/ɪˈnɪʃətɪv/',pos:'n.',tw:'主動性、新計畫',ex:'The sustainability initiative was launched last year.'},
+    ],note:'<strong>會議詞彙三組記憶：</strong>① 會議文件：agenda（議程）/ minutes（記錄）/ proposal（提案）② 會議動作：adjourn（休會）/ postpone（延期）/ facilitate（主持）③ 溝通：clarify（澄清）/ consensus（共識）'},
+    grammar:{title:'被動語態（Part 5/6 高頻）',rules:[
+      {r:'<strong>基本被動式</strong>：be + p.p.<br><span class="formula">The report is prepared by the team.（現在被動）</span>'},
+      {r:'<strong>各時態被動</strong>：<br><span class="formula">was/were + p.p.（過去）/ will be + p.p.（未來）/ has been + p.p.（完成）</span>'},
+      {r:'<strong>判斷方法</strong>：主詞是「被做」的那方 → 被動式<br><span class="formula">The letter was written by Mark.（信件被Mark寫）</span>'},
+    ],qs:[
+      {q:'The new branch <em>______</em> next spring.',opts:['A. opens','B. will open','C. will be opened','D. is opened'],a:'C',exp:'分店是「被開設的」，且時間是 next spring（未來），用<strong>未來被動式</strong> will be + p.p.。'},
+      {q:'All employees <em>______</em> to complete the training by Friday.',opts:['A. require','B. are required','C. requiring','D. have required'],a:'B',exp:'員工是「被要求」的，用<strong>被動式</strong> are required。be required to + V = 被要求做某事。'},
+      {q:'The proposal <em>______</em> since last Tuesday.',opts:['A. discusses','B. is discussed','C. has been discussed','D. discussed'],a:'C',exp:'since last Tuesday 搭配完成式，提案是「被討論的」，用<strong>現在完成被動</strong> has been + p.p.。'},
+      {q:'The invoice <em>______</em> to the client tomorrow morning.',opts:['A. will send','B. sends','C. will be sent','D. is sending'],a:'C',exp:'發票是「被發送的」+ 未來時間 tomorrow，用<strong>未來被動</strong> will be sent。'},
+    ]},
+    listen:{title:'Part 3 短對話練習 — 辦公室情境',url:'https://www.youtube.com/results?search_query=TOEIC+Part+3+short+conversation+practice',urlLabel:'搜尋 Part 3 練習 →',steps:['搜尋 YouTube：TOEIC Part 3 short conversation practice','先看題目選項（30秒），預測對話主題','播放對話，抓住：說話者、地點、問題、解決方案','對答案時分析錯誤原因'],shadowWords:['Could we reschedule...','I\'m afraid that...','Would it be possible to...','Let me check on that','I\'ll get back to you'],transcript:'<strong>Part 3 常見對話框架（跟讀）：</strong><br>A: "The <strong>deadline</strong> for the report has been <strong>moved up</strong> to Friday."<br>B: "That\'s <strong>earlier than expected</strong>. I\'ll need to <strong>work overtime</strong>."<br>A: "I can <strong>help you with</strong> the data analysis section."',lqs:[
+      {q:'對話中提到 "moved up"，這表示截止日期：',opts:['A. 被延後了','B. 被提前了','C. 被取消了','D. 沒有改變'],a:'B',exp:'move up（a deadline）= 提前截止日期。move back/push back = 延後。這是 Part 3 常考的動詞片語。'},
+    ]}
+  },
+  // Day 5
+  {
+    vocab:{title:'客戶服務與業務詞彙',words:[
+      {w:'complaint',ph:'/kəmˈpleɪnt/',pos:'n.',tw:'投訴、抱怨',ex:'The customer filed a formal complaint with the manager.'},
+      {w:'refund',ph:'/ˈriːfʌnd/',pos:'n/v.',tw:'退款',ex:'The store issued a full refund for the defective product.'},
+      {w:'warranty',ph:'/ˈwɒrənti/',pos:'n.',tw:'保固、保證書',ex:'The product comes with a two-year warranty.'},
+      {w:'inquiry',ph:'/ˈɪŋkwəri/',pos:'n.',tw:'詢問、查詢',ex:'Please direct all inquiries to customer service.'},
+      {w:'resolve',ph:'/rɪˈzɒlv/',pos:'v.',tw:'解決（問題）',ex:'The issue was resolved within 24 hours.'},
+      {w:'satisfaction',ph:'/ˌsætɪsˈfækʃn/',pos:'n.',tw:'滿意度',ex:'Customer satisfaction is our top priority.'},
+      {w:'accommodate',ph:'/əˈkɒmədeɪt/',pos:'v.',tw:'容納、配合需求',ex:'We will try to accommodate your request.'},
+      {w:'expedite',ph:'/ˈekspɪdaɪt/',pos:'v.',tw:'加快、加速（程序）',ex:'Can we expedite the shipping for this order?'},
+      {w:'quote',ph:'/kwoʊt/',pos:'n/v.',tw:'報價',ex:'We received three quotes from different suppliers.'},
+      {w:'dispatch',ph:'/dɪˈspætʃ/',pos:'v.',tw:'派遣、發送（貨物）',ex:'The order was dispatched this morning.'},
+    ],note:'<strong>客服流程記憶：</strong>complaint（投訴）→ inquiry（查詢）→ resolve（解決）→ refund/warranty（退款/保固）→ satisfaction（滿意度）'},
+    grammar:{title:'不定詞 vs 動名詞（Part 5 必考）',rules:[
+      {r:'<strong>接動名詞（Ving）的動詞</strong>：enjoy / suggest / avoid / consider / finish / recommend / mind / deny<br><span class="formula">She suggested moving the meeting. / Please avoid using informal language.</span>'},
+      {r:'<strong>接不定詞（to V）的動詞</strong>：agree / decide / plan / expect / hope / want / need / refuse<br><span class="formula">They agreed to extend the deadline. / He decided to resign.</span>'},
+      {r:'<strong>接兩者均可但意思不同</strong>：remember / forget / stop / try<br><span class="formula">stop to do（停下來去做）vs stop doing（停止做）</span>'},
+    ],qs:[
+      {q:'The manager recommended <em>______</em> the quarterly budget review.',opts:['A. to postpone','B. postpone','C. postponing','D. postponed'],a:'C',exp:'recommend 後面固定接<strong>動名詞（Ving）</strong>。和 suggest、avoid 一樣，都接 Ving。'},
+      {q:'The company decided <em>______</em> a new distribution center.',opts:['A. building','B. to build','C. built','D. build'],a:'B',exp:'decide 後面固定接<strong>不定詞（to V）</strong>。decide to do something = 決定做某事。'},
+      {q:'Please remember <em>______</em> the monthly report before 5 PM.',opts:['A. submitting','B. submit','C. to submit','D. submitted'],a:'C',exp:'remember to do = 記得（去做未來的事）。remember doing = 記得曾經做過。此處是提醒未來要做，用<strong>to submit</strong>。'},
+      {q:'The new regulation requires all vendors <em>______</em> certification.',opts:['A. obtaining','B. to obtain','C. obtain','D. obtains'],a:'B',exp:'require sb. to do sth. 是固定句型，接<strong>不定詞</strong>。= 要求某人做某事。'},
+    ]},
+    listen:{title:'BBC 6 Minute English — 商業主題',url:'https://www.bbc.co.uk/learningenglish/english/features/6-minute-english',urlLabel:'前往 BBC →',steps:['點擊進入 BBC 6 Minute English','搜尋關鍵字：business / work / money / career','選一集，先聽一遍不看文字','對照文字稿（transcript）聽第二遍','挑 5 個新單字記下來'],shadowWords:['work-life balance','remote working','job satisfaction','career development','workplace culture'],transcript:'<strong>BBC 常見職場句型（跟讀）：</strong><br>"<strong>According to</strong> a recent survey, more employees prefer <strong>flexible working</strong> arrangements."<br>"The concept of <strong>work-life balance</strong> has become increasingly important."<br>"Companies are investing in <strong>employee well-being</strong> programmes."',lqs:[
+      {q:'"Flexible working arrangements" 在多益中最可能出現在哪個場景？',opts:['A. 餐廳訂位','B. 旅遊行程','C. 辦公室政策討論','D. 醫院就診'],a:'C',exp:'flexible working（彈性工作）是多益 Part 3/4 最常見的辦公室政策場景，常出現在公司政策通知或主管與員工的對話中。'},
+    ]}
+  },
+  // Day 6
+  {
+    vocab:{title:'物流與供應鏈詞彙',words:[
+      {w:'shipment',ph:'/ˈʃɪpmənt/',pos:'n.',tw:'貨物、出貨',ex:'The shipment is expected to arrive on Thursday.'},
+      {w:'freight',ph:'/freɪt/',pos:'n.',tw:'貨運、運費',ex:'Freight costs have increased due to fuel prices.'},
+      {w:'logistics',ph:'/ləˈdʒɪstɪks/',pos:'n.',tw:'物流',ex:'The logistics team coordinates all deliveries.'},
+      {w:'customs',ph:'/ˈkʌstəmz/',pos:'n.',tw:'海關',ex:'The goods were held at customs for inspection.'},
+      {w:'warehouse',ph:'/ˈweəhaʊs/',pos:'n.',tw:'倉庫',ex:'All products are stored in our central warehouse.'},
+      {w:'procurement',ph:'/prəˈkjʊərmənt/',pos:'n.',tw:'採購',ex:'The procurement team sources materials globally.'},
+      {w:'vendor',ph:'/ˈvendər/',pos:'n.',tw:'供應商、賣家',ex:'We work with vendors from 15 different countries.'},
+      {w:'consignment',ph:'/kənˈsaɪnmənt/',pos:'n.',tw:'寄售、一批貨物',ex:'The latest consignment arrived last Tuesday.'},
+      {w:'shortage',ph:'/ˈʃɔːtɪdʒ/',pos:'n.',tw:'短缺、不足',ex:'There is a shortage of semiconductor components.'},
+      {w:'overdue',ph:'/ˌoʊvəˈdjuː/',pos:'adj.',tw:'逾期的、過期的',ex:'The payment is two weeks overdue.'},
+    ],note:'<strong>物流詞彙分組：</strong>出貨：shipment / consignment。運輸：freight / logistics。地點：warehouse / customs。人員：vendor / procurement team。問題：shortage / overdue'},
+    grammar:{title:'連接詞與副詞（Part 5 邏輯題）',rules:[
+      {r:'<strong>因果關係</strong>：because / since / as（原因）→ therefore / thus / as a result（結果）<br><span class="formula">Because of bad weather, the event was cancelled. / Sales dropped; therefore, costs were cut.</span>'},
+      {r:'<strong>讓步關係</strong>：although / even though / despite / in spite of<br><span class="formula">Although it was expensive, we bought it. / Despite the cost, we proceeded.</span>'},
+      {r:'<strong>注意</strong>：despite / in spite of 後面接名詞或 Ving，不接子句<br><span class="formula">Despite the rain（✓）/ Despite it rained（✗）</span>'},
+    ],qs:[
+      {q:'<em>______</em> the bad weather, the outdoor event proceeded as planned.',opts:['A. Although','B. Despite','C. However','D. Because'],a:'B',exp:'空格後是名詞片語 the bad weather（不是子句），所以用<strong>despite</strong>（介系詞）而不是 although（連接詞接子句）。'},
+      {q:'Sales have been declining; <em>______</em>, the company has reduced its workforce.',opts:['A. despite','B. although','C. therefore','D. unless'],a:'C',exp:'分號後的句子是「結果」（裁員），前面是原因（業績下滑），用表結果的<strong>therefore</strong>（因此）。'},
+      {q:'<em>______</em> he submitted the report late, its quality was excellent.',opts:['A. Because','B. Therefore','C. Although','D. Despite'],a:'C',exp:'雖然遲交（讓步），但品質好，邏輯是「讓步」，用<strong>although</strong>。空格後有子句（he submitted...），不能用 despite。'},
+      {q:'The project was completed on time <em>______</em> numerous challenges.',opts:['A. although','B. because','C. however','D. despite'],a:'D',exp:'空格後是名詞片語 numerous challenges，接名詞要用<strong>despite</strong>。若是子句則用 although。'},
+    ]},
+    listen:{title:'Part 4 獨白練習 — 廣播通知',url:'https://www.youtube.com/results?search_query=TOEIC+Part+4+talk+announcement+practice',urlLabel:'搜尋 Part 4 練習 →',steps:['搜尋 TOEIC Part 4 talk practice','先讀 3 題選項（預測主題：廣播？電話？新聞？）','聽獨白時抓：Who（誰說）/ What（什麼事）/ Where（哪裡）/ When（何時）','Part 4 獨白通常 20-30 秒，快速掌握大意最重要'],shadowWords:['attention please','effective immediately','as of today','please be advised','we regret to inform you'],transcript:'<strong>Part 4 廣播通知常見句型（跟讀）：</strong><br>"<strong>Attention all passengers</strong>. Flight 302 to Tokyo has been <strong>delayed</strong> due to technical difficulties."<br>"<strong>Please be advised that</strong> the main entrance will be <strong>closed for renovation</strong> starting Monday."<br>"<strong>Effective immediately</strong>, all employees must use the new ID badge system."',lqs:[
+      {q:'廣播中說 "Effective immediately"，這表示：',opts:['A. 從下週起','B. 立刻生效','C. 在確認之後','D. 等通知再說'],a:'B',exp:'effective immediately = 立刻生效、即刻起。這是 Part 4 廣播/公告最常見的時間表達，必須記住。'},
+    ]}
+  },
+  // Day 7
+  {
+    vocab:{title:'數字與統計詞彙',words:[
+      {w:'approximately',ph:'/əˈprɒksɪmətli/',pos:'adv.',tw:'大約、約略',ex:'Approximately 200 employees attended the event.'},
+      {w:'fluctuate',ph:'/ˈflʌktʃueɪt/',pos:'v.',tw:'波動、起伏',ex:'Oil prices fluctuated significantly last year.'},
+      {w:'substantial',ph:'/səbˈstænʃl/',pos:'adj.',tw:'大量的、實質的',ex:'There was a substantial increase in sales last quarter.'},
+      {w:'consecutive',ph:'/kənˈsekjʊtɪv/',pos:'adj.',tw:'連續的',ex:'The company has achieved growth for five consecutive years.'},
+      {w:'marginal',ph:'/ˈmɑːdʒɪnl/',pos:'adj.',tw:'微小的、邊際的',ex:'There was only a marginal improvement in performance.'},
+      {w:'benchmark',ph:'/ˈbentʃmɑːk/',pos:'n.',tw:'基準、標竿',ex:'The new system exceeded all performance benchmarks.'},
+      {w:'projection',ph:'/prəˈdʒekʃn/',pos:'n.',tw:'預測、預估',ex:"Sales projections for next year look optimistic."},
+      {w:'variance',ph:'/ˈveəriəns/',pos:'n.',tw:'差異、變異',ex:'The variance between actual and projected costs was minimal.'},
+      {w:'yield',ph:'/jiːld/',pos:'n/v.',tw:'產出、報酬率',ex:'The investment yielded a 12% annual return.'},
+      {w:'plateau',ph:'/ˈplætoʊ/',pos:'v/n.',tw:'趨於平穩、停滯期',ex:"Growth has plateaued after three years of rapid expansion."},
+    ],note:'<strong>數字趨勢詞彙：</strong>上升：surge / soar / climb。下降：decline / drop / plunge。持平：plateau / level off / stabilize。波動：fluctuate / vary。這些詞在 Part 7 圖表題中超高頻！'},
+    grammar:{title:'條件句（if 句型）',rules:[
+      {r:'<strong>第一條件句（真實條件）</strong>：If + 現在式, will + V<br><span class="formula">If the shipment arrives today, we will start production.</span>'},
+      {r:'<strong>第二條件句（假設條件）</strong>：If + 過去式, would + V<br><span class="formula">If we had more staff, we would complete it faster.</span>'},
+      {r:'<strong>Unless = if not</strong>：Unless you confirm, I will cancel the order.<br><span class="formula">= If you do not confirm, I will cancel the order.</span>'},
+    ],qs:[
+      {q:'If the supplier <em>______</em> the delivery, we will have to find an alternative.',opts:['A. delays','B. will delay','C. delayed','D. would delay'],a:'A',exp:'第一條件句：If + <strong>現在式</strong>, will + V。If 子句不用 will，用現在式表示可能發生的未來情況。'},
+      {q:'If the company <em>______</em> more resources, it could expand overseas.',opts:['A. has','B. had','C. will have','D. have'],a:'B',exp:'第二條件句（假設/非現實）：If + <strong>過去式</strong>, could/would + V。表示現在假設的情況。'},
+      {q:'<em>______</em> the invoice is paid on time, the order will be processed.',opts:['A. Unless','B. If','C. Although','D. While'],a:'B',exp:'此句邏輯：如果准時付款，就會處理訂單。是正面條件，用<strong>If</strong>。Unless = 除非（負面條件）。'},
+      {q:'The contract will be void <em>______</em> both parties sign by the deadline.',opts:['A. if','B. when','C. unless','D. once'],a:'C',exp:'合約將作廢，除非雙方在截止前簽署。<strong>unless = if not</strong> = 除非（otherwise the contract is void）。'},
+    ]},
+    listen:{title:'VOA / Business English — 週複習',url:'https://learningenglish.voanews.com/z/3613',urlLabel:'前往 VOA →',steps:['今天是第7天，做一個週複習！','回顧這週學過的 70 個單字（點選之前的 Day 1-6）','在 VOA 找一篇商業類文章，挑戰不看文字聽完全篇','寫下文章的 Who / What / Why / Result 四個要素'],shadowWords:['to summarize','in conclusion','the key takeaway','moving forward','as a result of'],transcript:'<strong>週複習重點句型（跟讀）：</strong><br>"<strong>To summarize</strong>, the third quarter results were <strong>above expectations</strong>."<br>"<strong>Moving forward</strong>, the company plans to <strong>focus on</strong> emerging markets."<br>"<strong>As a result of</strong> the restructuring, efficiency improved by 30%."',lqs:[
+      {q:'"Moving forward" 在商業語境中最常見的意思是？',opts:['A. 向前走','B. 往後退','C. 接下來、展望未來','D. 重新開始'],a:'C',exp:'moving forward 是商業英語超高頻慣用語，表示「接下來」「往前看」「展望未來」。常出現在 Part 4 管理層報告或會議總結中。'},
+    ]}
+  },
+];
+
+// Extend to 30 days by cycling through 7-day patterns with variation
+function getDay(dayIdx) {
+  const base = DAILY[dayIdx % 7];
+  return base;
+}
+
+// ===========================
+// STATE
+// ===========================
+let currentDay = 0;
+let dayCompleted = JSON.parse(localStorage.getItem('toeic_days') || '{}');
+let dayGrammarState = {};
+
+function initDay() {
+  const today = new Date();
+  const startStr = localStorage.getItem('toeic_start');
+  if (!startStr) {
+    const todayStr = today.toISOString().split('T')[0];
+    localStorage.setItem('toeic_start', todayStr);
+    if (window.saveCloud) window.saveCloud('toeic_start', todayStr);
+  }
+  const start = new Date(localStorage.getItem('toeic_start'));
+  const diff = Math.floor((today - start) / 86400000);
+  currentDay = Math.max(0, diff);
+  renderDay();
+  renderWeekDots();
+}
+
+function changeDay(d) {
+  currentDay = Math.max(0, currentDay + d);
+  renderDay();
+  renderWeekDots();
+}
+
+function renderWeekDots() {
+  const el = document.getElementById('weekDots');
+  let html = '';
+  const start = Math.max(0, currentDay - 3);
+  const end = start + 14;
+  for (let i = start; i < end; i++) {
+    const isDone = dayCompleted[i];
+    const isActive = i === currentDay;
+    html += `<div class="wd ${isActive?'active':''} ${isDone&&!isActive?'done':''}" onclick="jumpDay(${i})">D${i+1}</div>`;
+  }
+  el.innerHTML = html;
+}
+
+function jumpDay(d) {
+  currentDay = d;
+  renderDay();
+  renderWeekDots();
+}
+
+function renderDay() {
+  const data = getDay(currentDay);
+  const date = new Date();
+  date.setDate(date.getDate() - (Math.floor((new Date() - new Date(localStorage.getItem('toeic_start')||new Date().toISOString().split('T')[0])) / 86400000) - currentDay));
+  document.getElementById('dayLabel').textContent = `Day ${currentDay + 1}`;
+  document.getElementById('dayDate').textContent = date.toLocaleDateString('zh-TW', {month:'long',day:'numeric',weekday:'short'});
+  const completedItems = dayCompleted[currentDay] || [];
+  const totalItems = 3;
+  document.getElementById('dayCompleted').textContent = completedItems.length === totalItems ? '✅ 今日全部完成！' : completedItems.length > 0 ? `✓ 已完成 ${completedItems.length}/3 項` : '';
+  dayGrammarState = { answers: {}, correct: 0, total: 0 };
+  document.getElementById('dailyContent').innerHTML = buildDailyHTML(data, currentDay, completedItems);
+}
+
+function buildDailyHTML(data, dayIdx, completedItems) {
+  const vDone = completedItems.includes('vocab');
+  const gDone = completedItems.includes('grammar');
+  const lDone = completedItems.includes('listen');
+
+  return `
+    <!-- VOCAB BLOCK -->
+    <div class="lesson-block">
+      <div class="lesson-header" onclick="toggleLesson('vocab-body-${dayIdx}', this)">
+        <div class="lesson-icon">📚</div>
+        <div class="lesson-meta">
+          <div class="lesson-title">單字學習 — ${data.vocab.title} <span class="lesson-badge lb-vocab">10個單字</span>${vDone?'<span class="lesson-badge lb-done" style="margin-left:.5rem">✓ 完成</span>':''}</div>
+          <div class="lesson-desc">翻牌記憶單字，搭配例句加強印象</div>
+        </div>
+        <div class="lesson-toggle">▼</div>
+      </div>
+      <div class="lesson-body" id="vocab-body-${dayIdx}">
+        <div class="vc-grid">
+          ${data.vocab.words.map((w,i)=>{
+            const wId = regSpeak(w.w);
+            const exId = regSpeak(w.ex);
+            return `
+            <div class="vc" onclick="this.classList.toggle('flipped')">
+              <div class="vc-front">
+                <div class="vc-word">${w.w}</div>
+                <div class="vc-ph">${w.ph}</div>
+                <div class="vc-pos">${w.pos}</div>
+                <button class="vc-speak" onclick="event.stopPropagation();speakById('${wId}',this)">🔊 發音</button>
+                <div class="vc-hint">點擊翻牌 →</div>
+              </div>
+              <div class="vc-back">
+                <div class="vc-tw">🇹🇼 ${w.tw}</div>
+                <div class="vc-ex">${w.ex}</div>
+                <button class="vc-speak-ex" onclick="event.stopPropagation();speakById('${exId}',this)">🔊 聽例句</button>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div class="vocab-note">${data.vocab.note}</div>
+        <button class="done-btn" ${vDone?'disabled':''} onclick="markDone(${dayIdx},'vocab',this)">${vDone?'✓ 已完成':'✅ 完成單字學習'}</button>
+      </div>
+    </div>
+
+    <!-- GRAMMAR BLOCK -->
+    <div class="lesson-block">
+      <div class="lesson-header" onclick="toggleLesson('grammar-body-${dayIdx}', this)">
+        <div class="lesson-icon">📝</div>
+        <div class="lesson-meta">
+          <div class="lesson-title">文法練習 — ${data.grammar.title} <span class="lesson-badge lb-grammar">規則＋4題練習</span>${gDone?'<span class="lesson-badge lb-done" style="margin-left:.5rem">✓ 完成</span>':''}</div>
+          <div class="lesson-desc">先看規則說明，再做練習題鞏固</div>
+        </div>
+        <div class="lesson-toggle">▼</div>
+      </div>
+      <div class="lesson-body" id="grammar-body-${dayIdx}">
+        <div class="sub-label red" style="margin-bottom:.8rem">📖 今日文法規則</div>
+        ${data.grammar.rules.map(r=>`<div class="g-rule">${r.r}</div>`).join('')}
+        <div class="sub-label red" style="margin-top:1.2rem;margin-bottom:.8rem">✏️ 練習題（4題）</div>
+        ${data.grammar.qs.map((q,i)=>`
+          <div class="dquiz-card">
+            <div class="q-num">Q${i+1} · Part 5</div>
+            <div class="dquiz-q">${q.q}</div>
+            <div class="dopts">
+              ${q.opts.map(o=>`<button class="dopt" data-lbl="${o.charAt(0)}" onclick="dAns(this,'${dayIdx}_${i}','${o.charAt(0)}','${q.a}',\`${q.exp.replace(/`/g,"'")}\`)">${o}</button>`).join('')}
+            </div>
+            <div class="dfb" id="dfb_${dayIdx}_${i}"></div>
+          </div>
+        `).join('')}
+        <div class="g-score" id="gscore-${dayIdx}"></div>
+        <button class="done-btn" ${gDone?'disabled':''} id="gdone-${dayIdx}" onclick="markDone(${dayIdx},'grammar',this)">${gDone?'✓ 已完成':'✅ 完成文法練習'}</button>
+      </div>
+    </div>
+
+    <!-- LISTEN BLOCK -->
+    <div class="lesson-block">
+      <div class="lesson-header" onclick="toggleLesson('listen-body-${dayIdx}', this)">
+        <div class="lesson-icon">🎧</div>
+        <div class="lesson-meta">
+          <div class="lesson-title">聽力訓練 — ${data.listen.title} <span class="lesson-badge lb-listen">跟讀＋練習</span>${lDone?'<span class="lesson-badge lb-done" style="margin-left:.5rem">✓ 完成</span>':''}</div>
+          <div class="lesson-desc">按步驟操作，直接點連結前往聽力資源</div>
+        </div>
+        <div class="lesson-toggle">▼</div>
+      </div>
+      <div class="lesson-body" id="listen-body-${dayIdx}">
+        <div class="audio-resource">
+          <div class="ar-icon">🔗</div>
+          <div class="ar-info">
+            <h4>${data.listen.title}</h4>
+            <p>點擊右方按鈕前往學習資源，依照下方步驟操作</p>
+          </div>
+          <a class="ar-link" href="${data.listen.url}" target="_blank">${data.listen.urlLabel}</a>
+        </div>
+        <div class="sub-label blue" style="margin-bottom:.8rem">📋 今日學習步驟</div>
+        <div class="listen-steps">
+          ${data.listen.steps.map((s,i)=>`<div class="ls"><div class="ls-num">${i+1}</div><div class="ls-text">${s}</div></div>`).join('')}
+        </div>
+        <div class="sub-label blue" style="margin-top:1rem;margin-bottom:.8rem">🔊 影子跟讀單字</div>
+        <div class="shadow-words">${data.listen.shadowWords.map(w=>`<div class="sw">${w}</div>`).join('')}</div>
+        <div class="transcript-box">${data.listen.transcript}</div>
+        <div class="listen-quiz">
+          <div class="lq-title">今日聽力小測驗</div>
+          ${data.listen.lqs.map((q,i)=>`
+            <div class="dquiz-card">
+              <div class="dquiz-q">${q.q}</div>
+              <div class="dopts">
+              ${q.opts.map(o=>`<button class="dopt" data-lbl="${o.charAt(0)}" onclick="dAns(this,'listen_${dayIdx}_${i}','${o.charAt(0)}','${q.a}',\`${q.exp.replace(/`/g,"'")}\`)">${o}</button>`).join('')}
+              </div>
+              <div class="dfb" id="dfb_listen_${dayIdx}_${i}"></div>
+            </div>
+          `).join('')}
+        </div>
+        <button class="done-btn" ${lDone?'disabled':''} onclick="markDone(${dayIdx},'listen',this)">${lDone?'✓ 已完成':'✅ 完成聽力訓練'}</button>
+      </div>
+    </div>
+  `;
+}
+
+function toggleLesson(id, header) {
+  const body = document.getElementById(id);
+  const toggle = header.querySelector('.lesson-toggle');
+  if (!body) return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  toggle.classList.toggle('open', !isOpen);
+}
+
+function dAns(btn, key, chosen, correct, exp) {
+  const card = btn.closest('.dquiz-card');
+  if (card.dataset.done) return;
+  card.dataset.done = '1';
+  const isCorrect = chosen === correct;
+  card.querySelectorAll('.dopt').forEach(o => {
+    o.disabled = true;
+    const lbl = o.dataset.lbl;
+    if (lbl === chosen && isCorrect) {
+      o.classList.add('dc');
+      o.innerHTML += '<span class="dopt-tag">✓ 你的答案（正確）</span>';
+    } else if (lbl === chosen && !isCorrect) {
+      o.classList.add('dw');
+      o.innerHTML += '<span class="dopt-tag">✗ 你選的（錯誤）</span>';
+    } else if (!isCorrect && lbl === correct) {
+      o.classList.add('dsc');
+      o.innerHTML += '<span class="dopt-tag">← 正確答案</span>';
+    }
+  });
+  const fb = document.getElementById('dfb_' + key);
+  if (fb) {
+    fb.innerHTML = (isCorrect ? '<strong style="color:var(--green)">✓ 答對！</strong> ' : '<strong style="color:var(--accent2)">✗ 答錯。</strong> ') + exp;
+    fb.className = 'dfb show' + (isCorrect ? '' : ' wfb');
+  }
+}
+
+function markDone(dayIdx, type, btn) {
+  let completed = dayCompleted[dayIdx] || [];
+  if (!completed.includes(type)) completed.push(type);
+  dayCompleted[dayIdx] = completed;
+  saveData('toeic_days', dayCompleted);
+  btn.disabled = true;
+  btn.textContent = '✓ 已完成';
+  const totalItems = 3;
+  const el = document.getElementById('dayCompleted');
+  if (completed.length === totalItems) {
+    el.textContent = '✅ 今日全部完成！';
+  } else {
+    el.textContent = `✓ 已完成 ${completed.length}/3 項`;
+  }
+  renderWeekDots();
+  updateProgress();
+}
+
+// ===========================
+// PRACTICE QUIZ
+// ===========================
+const QA = {
+  0:{correct:'B',exp:'冠詞 a 後、名詞前需要<strong>形容詞</strong>。impressive（形容詞）修飾 presentation。impress=動詞，impression=名詞，impressively=副詞。'},
+  1:{correct:'B',exp:'be in business 固定搭配，表示「從事商業」。on business=出差，at/for 不是慣用語。'},
+  2:{correct:'C',exp:'by the time + 現在式，主句用<strong>未來完成式</strong>（will have + p.p.）。'},
+  3:{correct:'A',exp:'雖然價格高但賣得好，邏輯是讓步，用<strong>Although</strong>。Because 表因果，方向相反。'},
+  4:{correct:'C',exp:'空格修飾名詞 expense reports，需要<strong>所有格</strong>。their（他們的）是正確詞性。'},
+  5:{correct:'B',exp:'since 搭配<strong>現在完成式</strong>。have decreased = 從那時起持續下降。'},
+  6:{correct:'C',exp:'improve the ___ 需要名詞作受詞。<strong>productivity</strong>（名詞）= 生產力。'},
+  7:{correct:'B',exp:'報告是「被準備的」，主詞是被動方，用<strong>被動語態</strong> is prepared。'},
+  8:{correct:'C',exp:'than 後接比較對象，需要<strong>比較級</strong>。higher（比原級 high 多 er）。more higher 是雙重比較錯誤。'},
+  9:{correct:'B',exp:'suggest 後面固定接<strong>動名詞（Ving）</strong>= postponing。'},
+  10:{correct:'B',exp:'Subject 欄寫 Updated Remote Work Policy，主旨就是通知員工新政策。'},
+  11:{correct:'C',exp:'原文「at least five business days in advance」，直接細節題找數字。'},
+  12:{correct:'C',exp:'兩個條件：six months of service AND satisfactory review，缺一不可。'},
+  13:{correct:'B',exp:'原文「core hours (9 AM – 3 PM)」，括號內就是答案。'},
+  14:{correct:'B',exp:'標題是「Updated」，暗示之前已有政策。推論題選最接近原文的合理推斷。'},
+};
+
+let sessionAnswers = {};
+let sessionCorrect = 0;
+let sessionTotal = 0;
+let currentPSection = 'grammar';
+
+function ans(btn, qIdx, chosen) {
+  if (sessionAnswers[qIdx] !== undefined) return;
+  const correct = QA[qIdx].correct;
+  const isCorrect = chosen === correct;
+  sessionAnswers[qIdx] = isCorrect;
+  // Scope to .sub-quiz if exists (Part 7 multi-Q card), else .quiz-card
+  const scope = btn.closest('.sub-quiz') || btn.closest('.quiz-card');
+  scope.querySelectorAll('.option').forEach(o => {
+    o.disabled = true;
+    const lbl = o.dataset.lbl;
+    if (lbl === chosen && isCorrect) {
+      o.classList.add('correct');
+      o.innerHTML += '<span class="opt-tag">✓ 你的答案（正確）</span>';
+    } else if (lbl === chosen && !isCorrect) {
+      o.classList.add('wrong');
+      o.innerHTML += '<span class="opt-tag">✗ 你選的（錯誤）</span>';
+    } else if (!isCorrect && lbl === correct) {
+      o.classList.add('show-correct');
+      o.innerHTML += '<span class="opt-tag">← 正確答案</span>';
+    }
+  });
+  const fb = document.getElementById('fb' + qIdx);
+  fb.innerHTML = (isCorrect ? '<strong style="color:var(--green)">✓ 答對！</strong> ' : '<strong style="color:var(--accent2)">✗ 答錯。</strong> ') + QA[qIdx].exp;
+  fb.className = 'feedback show' + (isCorrect ? '' : ' wrong-fb');
+  if (isCorrect) sessionCorrect++;
+  sessionTotal++;
+  updateSummary();
+}
+
+function updateSummary() {
+  document.getElementById('ssTotal').textContent = sessionTotal;
+  document.getElementById('ssCorrect').textContent = sessionCorrect;
+  document.getElementById('ssWrong').textContent = sessionTotal - sessionCorrect;
+  document.getElementById('ssRate').textContent = sessionTotal > 0 ? Math.round(sessionCorrect / sessionTotal * 100) + '%' : '—';
+  document.getElementById('btnSave').disabled = sessionTotal === 0;
+}
+
+function savePracticeScore() {
+  if (sessionTotal === 0) return;
+  const history = JSON.parse(localStorage.getItem('toeic_practice') || '[]');
+  const now = new Date();
+  const label = now.toLocaleDateString('zh-TW') + ' ' + now.toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'});
+  history.unshift({time: label, correct: sessionCorrect, total: sessionTotal, rate: Math.round(sessionCorrect/sessionTotal*100), section: currentPSection === 'grammar' ? 'Part 5' : 'Part 7'});
+  localStorage.setItem('toeic_practice', JSON.stringify(history.slice(0, 50)));
+  if (window.saveCloud) window.saveCloud('toeic_practice', history.slice(0, 50));
+  document.getElementById('btnSave').disabled = true;
+  document.getElementById('btnSave').textContent = '✓ 已儲存';
+  renderPracticeHistory();
+  alert('✅ 成績已儲存！');
+}
+
+const PVOCAB = [
+  {w:'negotiate',ph:'/nɪˈɡoʊʃieɪt/',tw:'協商、談判',ex:'We need to negotiate a new contract.'},
+  {w:'reimburse',ph:'/ˌriːɪmˈbɜːrs/',tw:'報銷、退款',ex:'The company will reimburse travel expenses.'},
+  {w:'collaborate',ph:'/kəˈlæbəreɪt/',tw:'合作、協作',ex:'The two teams collaborated on the launch.'},
+  {w:'allocate',ph:'/ˈæləkeɪt/',tw:'分配、撥款',ex:'Budget was allocated across departments.'},
+  {w:'consecutive',ph:'/kənˈsekjʊtɪv/',tw:'連續的',ex:'Sales rose for five consecutive quarters.'},
+  {w:'proficient',ph:'/prəˈfɪʃnt/',tw:'熟練的、精通的',ex:'She is proficient in three languages.'},
+  {w:'expedite',ph:'/ˈekspɪdaɪt/',tw:'加快、加速',ex:'Can we expedite this shipping order?'},
+  {w:'facilitate',ph:'/fəˈsɪlɪteɪt/',tw:'促進、主持',ex:'She facilitated the team discussion.'},
+  {w:'procurement',ph:'/prəˈkjʊərmənt/',tw:'採購',ex:'The procurement team sources globally.'},
+  {w:'fluctuate',ph:'/ˈflʌktʃueɪt/',tw:'波動、起伏',ex:'Prices fluctuated significantly last year.'},
+  {w:'incentive',ph:'/ɪnˈsentɪv/',tw:'獎勵、誘因',ex:'Performance bonuses are used as incentives.'},
+  {w:'projection',ph:'/prəˈdʒekʃn/',tw:'預測、預估',ex:'Sales projections look optimistic.'},
+];
+
+function buildPracticeVocab() {
+  const el = document.getElementById('practiceVocab');
+  if (!el) return;
+  el.innerHTML = PVOCAB.map(v => `
+    <div class="vocab-card" onclick="this.classList.toggle('flipped')">
+      <div class="vocab-front"><div class="word">${v.w}</div><div class="phonetic">${v.ph}</div><div class="vocab-hint">點擊翻牌 →</div></div>
+      <div class="vocab-back"><div class="meaning">🇹🇼 ${v.tw}</div><div class="example">${v.ex}</div></div>
+    </div>
+  `).join('');
+}
+
+function showPTab(id, btn) {
+  document.querySelectorAll('.quiz-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+  document.getElementById('qs-' + id).classList.add('active');
+  btn.classList.add('active');
+  currentPSection = id;
+  document.getElementById('scoreSummary').style.display = id === 'vocab' ? 'none' : 'flex';
+  if (id === 'vocab') buildPracticeVocab();
+}
+
+// ===========================
+// TRACKER
+// ===========================
+let scores = JSON.parse(localStorage.getItem('toeic_scores') || '[]');
+
+function addScore() {
+  const date = document.getElementById('scoreDate').value;
+  const listen = parseInt(document.getElementById('listenScore').value);
+  const read = parseInt(document.getElementById('readScore').value);
+  if (!date || isNaN(listen) || isNaN(read) || listen<0||listen>495||read<0||read>495) { alert('請填入正確資訊（0-495）'); return; }
+  scores.push({date, listen, read, total: listen+read});
+  scores.sort((a,b) => a.date.localeCompare(b.date));
+  saveData('toeic_scores', scores);
+  document.getElementById('listenScore').value = '';
+  document.getElementById('readScore').value = '';
+  renderScores();
+  updateProgress();
+}
+
+function deleteScore(i) {
+  if (!confirm('確定刪除？')) return;
+  scores.splice(i, 1);
+  saveData('toeic_scores', scores);
+  renderScores(); updateProgress();
+}
+
+function renderScores() {
+  const list = document.getElementById('scoreList');
+  if (!list) return;
+  if (scores.length === 0) { list.innerHTML = '<div style="font-size:.76rem;color:var(--muted);padding:.5rem 0">尚無記錄</div>'; return; }
+  list.innerHTML = scores.map((s,i) => {
+    const prev = i > 0 ? scores[i-1].total : null;
+    const diff = prev !== null ? s.total - prev : null;
+    const diffStr = diff === null ? '—' : diff >= 0 ? `<span class="up">+${diff}</span>` : `<span class="down">${diff}</span>`;
+    return `<div class="score-row"><span>${s.date}</span><span>${s.listen}</span><span>${s.read}</span><span style="color:var(--accent);font-weight:700">${s.total}</span><span>${diffStr}</span><span><button class="del-btn" onclick="deleteScore(${i})">✕</button></span></div>`;
+  }).reverse().join('');
+  if (scores.length >= 2) setTimeout(renderChart, 100);
+}
+
+function renderPracticeHistory() {
+  const history = JSON.parse(localStorage.getItem('toeic_practice') || '[]');
+  const el = document.getElementById('practiceHistory');
+  if (!el) return;
+  if (history.length === 0) { el.innerHTML = '<div style="font-size:.76rem;color:var(--muted);padding:.5rem 0">尚無記錄。完成練習後點「儲存」。</div>'; return; }
+  el.innerHTML = history.slice(0,15).map(h => `<div class="ph-row"><span style="color:var(--muted)">${h.time}</span><span class="${h.rate>=70?'up':'down'}">${h.rate}%</span><span>${h.section||'—'}</span><span>${h.correct}/${h.total}</span></div>`).join('');
+}
+
+function updateProgress() {
+  const doneDays = Object.keys(dayCompleted).filter(k => (dayCompleted[k]||[]).length >= 3).length;
+  const latest = scores.length > 0 ? scores[scores.length-1].total : null;
+  const pct = latest ? Math.min(((latest-400)/(990-400))*100, 100) : Math.min(doneDays/90*100, 10);
+  document.getElementById('mainProgress').style.width = Math.max(pct, 1) + '%';
+  document.getElementById('progressText').textContent = latest ? `目前最高 ${latest} / 990 · 完成 ${doneDays} 天` : `已完成 ${doneDays} 天課程`;
+}
+
+function renderChart() {
+  const wrap = document.getElementById('chartWrap');
+  if (!wrap) return;
+  wrap.style.display = 'block';
+  const canvas = document.getElementById('scoreChart');
+  const W = canvas.offsetWidth || 600; const H = 170;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+  const pad = {left:50,right:20,top:18,bottom:28};
+  const cw = W-pad.left-pad.right; const ch = H-pad.top-pad.bottom;
+  const totals = scores.map(s => s.total);
+  const minV = Math.max(0, Math.min(...totals)-80); const maxV = 990;
+  [400,500,600,700,800,900,990].forEach(v => {
+    const y = pad.top+ch-((v-minV)/(maxV-minV))*ch;
+    if (y >= pad.top && y <= pad.top+ch) {
+      ctx.strokeStyle='#2a2a40'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(W-pad.right,y); ctx.stroke();
+      ctx.fillStyle='#6a6a8a'; ctx.font='10px JetBrains Mono'; ctx.textAlign='right'; ctx.fillText(v,pad.left-5,y+4);
+    }
+  });
+  ctx.strokeStyle='#f5c518'; ctx.lineWidth=2; ctx.beginPath();
+  scores.forEach((s,i) => {
+    const x = pad.left+(i/Math.max(scores.length-1,1))*cw;
+    const y = pad.top+ch-((s.total-minV)/(maxV-minV))*ch;
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+  scores.forEach((s,i) => {
+    const x = pad.left+(i/Math.max(scores.length-1,1))*cw;
+    const y = pad.top+ch-((s.total-minV)/(maxV-minV))*ch;
+    ctx.beginPath(); ctx.arc(x,y,4,0,Math.PI*2); ctx.fillStyle='#f5c518'; ctx.fill();
+    ctx.fillStyle='#e8e8f0'; ctx.font='10px JetBrains Mono'; ctx.textAlign='center'; ctx.fillText(s.total,x,y-10);
+  });
+}
+
+// ===========================
+// PANEL NAV
+// ===========================
+function showPanel(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'tracker') { renderPracticeHistory(); renderScores(); setTimeout(()=>{if(scores.length>=2)renderChart();},100); }
+  if (id === 'daily') { renderDay(); renderWeekDots(); }
+}
+
+// ===========================
+// SPEECH (Web Speech API)
+// ===========================
+
+// Store texts by ID to avoid raw string injection in onclick attributes
+const SPEAK_REG = {};
+let spkCnt = 0;
+
+function regSpeak(text) {
+  const id = 's' + (spkCnt++);
+  SPEAK_REG[id] = text;
+  return id;
+}
+
+function speakById(id, btn) {
+  const text = SPEAK_REG[id];
+  if (text) doSpeak(text, btn);
+}
+
+function doSpeak(text, btn) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  document.querySelectorAll('.vc-speak.speaking,.vc-speak-ex.speaking').forEach(b => b.classList.remove('speaking'));
+
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'en-US';
+  utter.rate = 0.82;
+  utter.pitch = 1;
+
+  function trySpeak() {
+    const vs = window.speechSynthesis.getVoices();
+    const pref = vs.find(v => /en.US/i.test(v.lang) && /samantha|karen|google us english/i.test(v.name))
+      || vs.find(v => /en.US/i.test(v.lang))
+      || vs.find(v => /^en/i.test(v.lang));
+    if (pref) utter.voice = pref;
+    if (btn) btn.classList.add('speaking');
+    utter.onend = () => { if (btn) btn.classList.remove('speaking'); };
+    utter.onerror = () => { if (btn) btn.classList.remove('speaking'); };
+    window.speechSynthesis.speak(utter);
+  }
+
+  if (window.speechSynthesis.getVoices().length > 0) {
+    trySpeak();
+  } else {
+    window.speechSynthesis.onvoiceschanged = trySpeak;
+    setTimeout(trySpeak, 400);
+  }
+}
+
+if (window.speechSynthesis) window.speechSynthesis.getVoices();
+
+// ===========================
+// INIT
+// ===========================
+document.addEventListener('DOMContentLoaded', () => {
+  const d = document.getElementById('scoreDate');
+  if (d) d.value = new Date().toISOString().split('T')[0];
+  // Firebase module will call initDay/renderScores/etc after auth state resolves.
+  // Run locally first so the app is usable immediately (will be refreshed by cloud load).
+  initDay();
+  renderScores();
+  renderPracticeHistory();
+  updateProgress();
+  // Show setup overlay if Firebase config hasn't been filled yet
+  if (document.querySelector('script[type="module"]') &&
+      document.querySelector('script[type="module"]').textContent.includes('YOUR_API_KEY')) {
+    // Config not yet filled — show hint after a short delay
+    setTimeout(() => {
+      const s = document.getElementById('syncStatus');
+      if (s) { s.textContent = '⚙️ 點右方按鈕設定雲端同步'; s.className = 'sync-status warn'; }
+    }, 800);
+  }
+});
+</script>
+</body>
+</html>
