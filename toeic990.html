@@ -473,17 +473,23 @@ hr.div{border:none;border-top:1px solid var(--border);margin:1.8rem 0;}
 
 <!-- ====== PRACTICE ====== -->
 <div class="panel" id="panel-practice">
-  <div style="display:flex;align-items:baseline;gap:1.2rem;flex-wrap:wrap;margin-bottom:1rem;">
-    <div class="s-title green" style="margin-bottom:0">練習題庫</div>
-    <div style="display:flex;flex-direction:column;gap:.1rem;">
-      <div id="practiceDate" style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px;color:var(--accent)"></div>
-      <div id="practiceDateSub" style="font-size:.68rem;color:var(--muted);letter-spacing:2px;"></div>
+  <div class="s-title green">練習題庫</div>
+
+  <!-- Day Nav (same as daily learning) -->
+  <div class="day-nav">
+    <button class="day-btn" onclick="changePDay(-1)">← 前一天</button>
+    <div>
+      <div class="day-display" id="pDayLabel">Day 1</div>
+      <div class="day-date" id="pDayDate"></div>
     </div>
+    <button class="day-btn" onclick="changePDay(1)">後一天 →</button>
   </div>
+  <div class="week-dots" id="pWeekDots"></div>
+
   <div class="practice-tabs">
-    <button class="ptab active" onclick="showPTab('grammar',this)">📝 Part 5 文法（10題）</button>
-    <button class="ptab" onclick="showPTab('reading',this)">📖 Part 7 閱讀（5題）</button>
-    <button class="ptab" onclick="showPTab('vocab',this)">🃏 單字翻牌（12個）</button>
+    <button class="ptab active" id="ptab-grammar" onclick="showPTab('grammar',this)">📝 Part 5 文法（5題）</button>
+    <button class="ptab" id="ptab-reading" onclick="showPTab('reading',this)">📖 Part 7 閱讀（5題）</button>
+    <button class="ptab" id="ptab-vocab" onclick="showPTab('vocab',this)">🃏 單字翻牌（10個）</button>
   </div>
   <div class="score-summary" id="scoreSummary">
     <div class="ss-item"><div class="ss-label">答題數</div><div class="ss-val y" id="ssTotal">0</div></div>
@@ -492,50 +498,7 @@ hr.div{border:none;border-top:1px solid var(--border);margin:1.8rem 0;}
     <div class="ss-item"><div class="ss-label">正確率</div><div class="ss-val y" id="ssRate">—</div></div>
     <button class="btn-save" id="btnSave" onclick="savePracticeScore()" disabled>💾 儲存</button>
   </div>
-  <div class="quiz-section active" id="qs-grammar">
-    <div class="sub-label green">Part 5 — 高頻文法（10題）</div>
-    <div class="quiz-card"><div class="q-num">Q1 · 介系詞片語</div><div class="q-text">Please make sure all reports are submitted <em>______</em> Friday.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,0,'A')">（A）in time</button><button class="option" data-lbl="B" onclick="ans(this,0,'B')">（B）by time</button><button class="option" data-lbl="C" onclick="ans(this,0,'C')">（C）on time</button><button class="option" data-lbl="D" onclick="ans(this,0,'D')">（D）at time</button></div><div class="feedback" id="fb0"></div></div>
-    <div class="quiz-card"><div class="q-num">Q2 · 連接詞</div><div class="q-text"><em>______</em> you notify us in advance, the reservation will be cancelled automatically.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,1,'A')">（A）Unless</button><button class="option" data-lbl="B" onclick="ans(this,1,'B')">（B）Although</button><button class="option" data-lbl="C" onclick="ans(this,1,'C')">（C）Because</button><button class="option" data-lbl="D" onclick="ans(this,1,'D')">（D）While</button></div><div class="feedback" id="fb1"></div></div>
-    <div class="quiz-card"><div class="q-num">Q3 · 完成進行式</div><div class="q-text">The engineers <em>______</em> on the new system for three years.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,2,'A')">（A）worked</button><button class="option" data-lbl="B" onclick="ans(this,2,'B')">（B）are working</button><button class="option" data-lbl="C" onclick="ans(this,2,'C')">（C）work</button><button class="option" data-lbl="D" onclick="ans(this,2,'D')">（D）have been working</button></div><div class="feedback" id="fb2"></div></div>
-    <div class="quiz-card"><div class="q-num">Q4 · 詞性（形容詞）</div><div class="q-text">The team has made <em>______</em> progress on the new product launch.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,3,'A')">（A）consideration</button><button class="option" data-lbl="B" onclick="ans(this,3,'B')">（B）considerable</button><button class="option" data-lbl="C" onclick="ans(this,3,'C')">（C）considerably</button><button class="option" data-lbl="D" onclick="ans(this,3,'D')">（D）consider</button></div><div class="feedback" id="fb3"></div></div>
-    <div class="quiz-card"><div class="q-num">Q5 · be required to</div><div class="q-text">All new hires are required <em>______</em> a two-day orientation session.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,4,'A')">（A）attending</button><button class="option" data-lbl="B" onclick="ans(this,4,'B')">（B）attended</button><button class="option" data-lbl="C" onclick="ans(this,4,'C')">（C）to attend</button><button class="option" data-lbl="D" onclick="ans(this,4,'D')">（D）attend</button></div><div class="feedback" id="fb4"></div></div>
-    <div class="quiz-card"><div class="q-num">Q6 · 介系詞片語</div><div class="q-text"><em>______</em> the board meeting, all department heads must submit a summary report.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,5,'A')">（A）Prior to</button><button class="option" data-lbl="B" onclick="ans(this,5,'B')">（B）Due to</button><button class="option" data-lbl="C" onclick="ans(this,5,'C')">（C）According to</button><button class="option" data-lbl="D" onclick="ans(this,5,'D')">（D）Apart from</button></div><div class="feedback" id="fb5"></div></div>
-    <div class="quiz-card"><div class="q-num">Q7 · 詞性（名詞）</div><div class="q-text">The project cannot proceed without the manager's <em>______</em>.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,6,'A')">（A）approve</button><button class="option" data-lbl="B" onclick="ans(this,6,'B')">（B）approved</button><button class="option" data-lbl="C" onclick="ans(this,6,'C')">（C）approvingly</button><button class="option" data-lbl="D" onclick="ans(this,6,'D')">（D）approval</button></div><div class="feedback" id="fb6"></div></div>
-    <div class="quiz-card"><div class="q-num">Q8 · 被動語態</div><div class="q-text">The merger <em>______</em> close by the end of the fiscal year.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,7,'A')">（A）expects to</button><button class="option" data-lbl="B" onclick="ans(this,7,'B')">（B）is expected to</button><button class="option" data-lbl="C" onclick="ans(this,7,'C')">（C）expecting to</button><button class="option" data-lbl="D" onclick="ans(this,7,'D')">（D）expected</button></div><div class="feedback" id="fb7"></div></div>
-    <div class="quiz-card"><div class="q-num">Q9 · 固定片語</div><div class="q-text">All expenses must be reimbursed <em>______</em> the company's travel policy.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,8,'A')">（A）on behalf of</button><button class="option" data-lbl="B" onclick="ans(this,8,'B')">（B）regardless of</button><button class="option" data-lbl="C" onclick="ans(this,8,'C')">（C）in accordance with</button><button class="option" data-lbl="D" onclick="ans(this,8,'D')">（D）in addition to</button></div><div class="feedback" id="fb8"></div></div>
-    <div class="quiz-card"><div class="q-num">Q10 · 詞性（副詞）</div><div class="q-text">The new automated system operates more <em>______</em> than the previous one.</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,9,'A')">（A）efficiently</button><button class="option" data-lbl="B" onclick="ans(this,9,'B')">（B）efficient</button><button class="option" data-lbl="C" onclick="ans(this,9,'C')">（C）efficiency</button><button class="option" data-lbl="D" onclick="ans(this,9,'D')">（D）efficience</button></div><div class="feedback" id="fb9"></div></div>
-  </div>
-  <div class="quiz-section" id="qs-reading">
-    <div class="sub-label green">Part 7 — 商業備忘錄（5題）</div>
-    <div class="quiz-card">
-      <div class="q-num">閱讀以下文章後回答 Q11-Q15</div>
-      <div class="q-passage">
-        <strong>JOB POSTING — Marketing Manager</strong><br>
-        Company: GlobalTech Solutions | Location: Taipei, Taiwan<br>
-        Employment Type: Full-time | Posted: October 1<br><br>
-        We are seeking an experienced <strong>Marketing Manager</strong> to lead our regional marketing team. The successful candidate will develop and implement marketing strategies to drive brand awareness and revenue growth.<br><br>
-        <strong>Requirements:</strong><br>
-        • Minimum of five years of experience in marketing or related field<br>
-        • Bachelor's degree in Marketing, Business, or Communications<br>
-        • Strong leadership and communication skills<br>
-        • Proficiency in data analytics tools is preferred<br><br>
-        <strong>Benefits:</strong><br>
-        • Competitive salary and annual bonus<br>
-        • Comprehensive health insurance<br>
-        • Flexible working hours<br><br>
-        Applications must be submitted by <strong>October 31</strong> via our website at globaltech.com/careers. Only shortlisted candidates will be contacted.
-      </div>
-      <div class="sub-quiz" style="margin-bottom:1rem"><div class="q-num" style="margin-top:.8rem">Q11 · 主旨</div><div class="q-text">What is the main purpose of this posting?</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,10,'A')">（A）To announce a company merger</button><button class="option" data-lbl="B" onclick="ans(this,10,'B')">（B）To promote a new product</button><button class="option" data-lbl="C" onclick="ans(this,10,'C')">（C）To recruit a Marketing Manager</button><button class="option" data-lbl="D" onclick="ans(this,10,'D')">（D）To describe company benefits</button></div><div class="feedback" id="fb10"></div></div>
-      <div class="sub-quiz" style="margin-bottom:1rem"><div class="q-num">Q12 · 細節</div><div class="q-text">How many years of experience is required for this position?</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,11,'A')">（A）At least three years</button><button class="option" data-lbl="B" onclick="ans(this,11,'B')">（B）At least five years</button><button class="option" data-lbl="C" onclick="ans(this,11,'C')">（C）At least seven years</button><button class="option" data-lbl="D" onclick="ans(this,11,'D')">（D）At least ten years</button></div><div class="feedback" id="fb11"></div></div>
-      <div class="sub-quiz" style="margin-bottom:1rem"><div class="q-num">Q13 · 細節（NOT題）</div><div class="q-text">Which benefit is NOT mentioned in the job posting?</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,12,'A')">（A）Competitive salary</button><button class="option" data-lbl="B" onclick="ans(this,12,'B')">（B）Health insurance</button><button class="option" data-lbl="C" onclick="ans(this,12,'C')">（C）Flexible working hours</button><button class="option" data-lbl="D" onclick="ans(this,12,'D')">（D）Company car</button></div><div class="feedback" id="fb12"></div></div>
-      <div class="sub-quiz" style="margin-bottom:1rem"><div class="q-num">Q14 · 細節</div><div class="q-text">By when must applications be submitted?</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,13,'A')">（A）October 31</button><button class="option" data-lbl="B" onclick="ans(this,13,'B')">（B）October 1</button><button class="option" data-lbl="C" onclick="ans(this,13,'C')">（C）November 30</button><button class="option" data-lbl="D" onclick="ans(this,13,'D')">（D）December 31</button></div><div class="feedback" id="fb13"></div></div>
-      <div class="sub-quiz"><div class="q-num">Q15 · 推論</div><div class="q-text">What is implied about proficiency in data analytics tools?</div><div class="options"><button class="option" data-lbl="A" onclick="ans(this,14,'A')">（A）It is the most important requirement</button><button class="option" data-lbl="B" onclick="ans(this,14,'B')">（B）It is mandatory for all applicants</button><button class="option" data-lbl="C" onclick="ans(this,14,'C')">（C）It is an advantage but not required</button><button class="option" data-lbl="D" onclick="ans(this,14,'D')">（D）It will be taught after hiring</button></div><div class="feedback" id="fb14"></div></div>
-    </div>
-  </div>
-  <div class="quiz-section" id="qs-vocab">
-    <div class="sub-label green">商業英語單字翻牌（12個）</div>
-    <div class="vocab-grid2" id="practiceVocab"></div>
-  </div>
+  <div id="practiceContent"></div>
 </div>
 
 <!-- ====== TRACKER ====== -->
@@ -1026,39 +989,324 @@ function markDone(dayIdx, type, btn) {
 }
 
 // ===========================
-// PRACTICE QUIZ
+// PRACTICE QUIZ — 7天輪替動態題目
 // ===========================
-const QA = {
-  // Part 5 — 全新10題（與每日學習完全不同）
-  0:{correct:'C',exp:'<strong>C — on time（準時）</strong>是固定片語。in time = 及時（趕上截止前）。兩者意思不同，on time 強調「不遲到」。'},
-  1:{correct:'A',exp:'<strong>A — Unless（除非）</strong>= if not。除非你通知我們，否則訂單取消。unless 後接肯定句表示負面條件。'},
-  2:{correct:'D',exp:'<strong>D — have been working（現在完成進行式）</strong>：for three years 搭配現在完成進行式，強調從過去持續到現在的動作。'},
-  3:{correct:'B',exp:'<strong>B — considerable（形容詞）</strong>修飾名詞 progress。considerably = 副詞，consider = 動詞，consideration = 名詞（詞性錯誤）。'},
-  4:{correct:'C',exp:'<strong>C — to attend（不定詞）</strong>：be required to + V 固定句型，表示「被要求做某事」。required + Ving 不正確。'},
-  5:{correct:'A',exp:'<strong>A — Prior to（在…之前）</strong>後接名詞，= before。prior to the meeting = 在會議之前，是商業英語高頻介系詞片語。'},
-  6:{correct:'D',exp:'<strong>D — approval（名詞）</strong>：require sb\'s ___ 空格需要名詞。approve = 動詞，approved = 形容詞，approvingly = 副詞。'},
-  7:{correct:'B',exp:'<strong>B — is expected to（被動）</strong>：The merger is expected to close = 預計將完成。主詞 merger 是被動方，且是未來預測。'},
-  8:{correct:'C',exp:'<strong>C — in accordance with（依照）</strong>是固定介系詞片語，接名詞。in accordance with company policy = 依照公司規定。'},
-  9:{correct:'A',exp:'<strong>A — efficiently（副詞）</strong>修飾動詞 operates。efficient = 形容詞（修飾名詞），efficiency = 名詞，efficience 不存在。'},
-  // Part 7 — 全新文章：工作職缺廣告
-  10:{correct:'C',exp:'職缺廣告的主旨就是招募人才。標題 Position: Marketing Manager 直接點明，答案 C 最準確。'},
-  11:{correct:'B',exp:'原文「minimum of five years of experience in marketing」= 至少5年行銷經驗，答案是 B。細節題直接找數字。'},
-  12:{correct:'D',exp:'原文福利列出：competitive salary、health insurance、flexible working hours，沒有提到 company car，答案是 D。'},
-  13:{correct:'A',exp:'原文「Applications must be submitted by October 31」截止日是10月31日，答案是 A。細節題找日期關鍵字。'},
-  14:{correct:'C',exp:'原文「proficiency in data analytics tools is preferred」= 偏好但非必要，是加分條件而非硬性要求，答案是 C。'},
-};
+const PDATA = [
+  {grammar:[
+    {t:'介系詞片語',q:'Please make sure all reports are submitted <em>______</em> Friday.',opts:['A. in time','B. by time','C. on time','D. at time'],a:'C',exp:'<strong>C — on time（準時）</strong>是固定片語。in time = 及時趕上。on time 強調「不遲到」。'},
+    {t:'連接詞',q:'<em>______</em> you notify us in advance, the reservation will be cancelled automatically.',opts:['A. Unless','B. Although','C. Because','D. While'],a:'A',exp:'<strong>A — Unless（除非）</strong>= if not。除非通知我們，否則訂單取消。'},
+    {t:'現在完成進行式',q:'The engineers <em>______</em> on the new system for three years.',opts:['A. worked','B. are working','C. work','D. have been working'],a:'D',exp:'<strong>D — have been working</strong>：for three years 搭配現在完成進行式，強調持續到現在的動作。'},
+    {t:'詞性（形容詞）',q:'The team has made <em>______</em> progress on the new product launch.',opts:['A. consideration','B. considerable','C. considerably','D. consider'],a:'B',exp:'<strong>B — considerable（形容詞）</strong>修飾名詞 progress。considerably = 副詞不修飾名詞。'},
+    {t:'be required to',q:'All new hires are required <em>______</em> a two-day orientation session.',opts:['A. attending','B. attended','C. to attend','D. attend'],a:'C',exp:'<strong>C — to attend</strong>：be required to + V 固定句型。'},
+  ],reading:{title:'Job Posting — Marketing Manager',passage:'<strong>JOB POSTING — Marketing Manager</strong><br>Company: GlobalTech Solutions | Taipei | Full-time | Posted: Oct 1<br><br>We seek an experienced <strong>Marketing Manager</strong> to lead our regional team and develop strategies to drive brand awareness.<br><br><strong>Requirements:</strong> Min. 5 years marketing experience · Bachelor\'s in Marketing or Business · Data analytics proficiency preferred<br><br><strong>Benefits:</strong> Competitive salary · Health insurance · Flexible hours<br><br>Apply by <strong>October 31</strong> at globaltech.com/careers.',qs:[
+    {t:'主旨',q:'What is the main purpose of this posting?',opts:['A. To announce a merger','B. To promote a product','C. To recruit a Marketing Manager','D. To list benefits'],a:'C',exp:'標題 Marketing Manager 直接點明招募目的，答案 C。'},
+    {t:'細節',q:'How many years of experience is required?',opts:['A. 3 years','B. 5 years','C. 7 years','D. 10 years'],a:'B',exp:'原文「Min. 5 years」，答案 B。'},
+    {t:'NOT題',q:'Which benefit is NOT mentioned?',opts:['A. Competitive salary','B. Health insurance','C. Flexible hours','D. Company car'],a:'D',exp:'原文沒有 company car，答案 D。'},
+    {t:'細節',q:'By when must applications be submitted?',opts:['A. Oct 31','B. Oct 1','C. Nov 30','D. Dec 31'],a:'A',exp:'原文「Apply by October 31」，答案 A。'},
+    {t:'推論',q:'What is implied about data analytics proficiency?',opts:['A. Most important requirement','B. Mandatory for all','C. Preferred but not required','D. Taught on the job'],a:'C',exp:'原文「preferred」= 加分條件非必要，答案 C。'},
+  ]},vocab:[
+    {w:'pursuant to',ph:'/ˈpɜːrsuənt/',tw:'依據、根據',ex:'Pursuant to policy, all expenses require approval.'},
+    {w:'mitigate',ph:'/ˈmɪtɪɡeɪt/',tw:'減輕、緩和',ex:'Steps were taken to mitigate risks.'},
+    {w:'outsource',ph:'/ˈaʊtsɔːrs/',tw:'外包',ex:'The company outsourced its IT support.'},
+    {w:'streamline',ph:'/ˈstriːmlaɪn/',tw:'精簡、使更有效率',ex:'We streamlined the approval process.'},
+    {w:'compliance',ph:'/kəmˈplaɪəns/',tw:'合規、遵從',ex:'Staff complete annual compliance training.'},
+    {w:'leverage',ph:'/ˈlevərɪdʒ/',tw:'善用、槓桿',ex:'We leverage our network to expand.'},
+    {w:'subsidiary',ph:'/səbˈsɪdiəri/',tw:'子公司',ex:'The subsidiary operates independently.'},
+    {w:'stakeholder',ph:'/ˈsteɪkhoʊldər/',tw:'利害關係人',ex:'All stakeholders were informed.'},
+    {w:'turnaround',ph:'/ˈtɜːrnəraʊnd/',tw:'好轉、週轉時間',ex:'Turnaround time for orders is 48 hours.'},
+    {w:'equity',ph:'/ˈekwəti/',tw:'股權、公平性',ex:'Employees received equity as compensation.'},
+  ]},
+  {grammar:[
+    {t:'被動語態',q:'The merger <em>______</em> close by the end of the fiscal year.',opts:['A. expects to','B. is expected to','C. expecting to','D. expected'],a:'B',exp:'<strong>B — is expected to</strong>：主詞 merger 是被動方，用被動語態 is expected to + V。'},
+    {t:'固定片語',q:'All expenses must be reimbursed <em>______</em> the company\'s travel policy.',opts:['A. on behalf of','B. regardless of','C. in accordance with','D. in addition to'],a:'C',exp:'<strong>C — in accordance with（依照）</strong>= according to，接名詞。'},
+    {t:'詞性（副詞）',q:'The new system operates more <em>______</em> than the previous one.',opts:['A. efficiently','B. efficient','C. efficiency','D. efficience'],a:'A',exp:'<strong>A — efficiently（副詞）</strong>修飾動詞 operates。efficient = 形容詞修飾名詞。'},
+    {t:'詞性（名詞）',q:'The project cannot proceed without the manager\'s <em>______</em>.',opts:['A. approve','B. approved','C. approvingly','D. approval'],a:'D',exp:'<strong>D — approval（名詞）</strong>：manager\'s 後需要名詞。'},
+    {t:'Prior to',q:'<em>______</em> the board meeting, all heads must submit a summary report.',opts:['A. Prior to','B. Due to','C. According to','D. Apart from'],a:'A',exp:'<strong>A — Prior to（在…之前）</strong>= before，後接名詞，商業英語高頻片語。'},
+  ],reading:{title:'Email — Strategic Partnership Proposal',passage:'<strong>From:</strong> sarah.chen@techwave.com | <strong>To:</strong> david.lee@partners.com<br><strong>Subject:</strong> Proposal for Strategic Partnership<br><br>Dear Mr. Lee,<br><br>I am writing to propose a <strong>strategic partnership</strong> for the upcoming fiscal year. Combining our resources would benefit both companies significantly.<br><br>Our proposal includes: joint product development, shared marketing campaigns, and co-hosted industry events. We estimate this partnership would increase revenue by <strong>25%</strong> for both parties within <strong>18 months</strong>.<br><br>I would like to schedule a meeting next week to discuss further.<br><br>Best regards, Sarah Chen | Business Development Manager',qs:[
+    {t:'主旨',q:'Why is Sarah writing this email?',opts:['A. To apply for a job','B. To propose a partnership','C. To cancel a contract','D. To request a refund'],a:'B',exp:'開頭「propose a strategic partnership」直接說明目的，答案 B。'},
+    {t:'細節',q:'What is the estimated revenue increase?',opts:['A. 15%','B. 20%','C. 25%','D. 30%'],a:'C',exp:'原文「increase revenue by 25%」，答案 C。'},
+    {t:'細節',q:'Within how many months does Sarah expect results?',opts:['A. 6','B. 12','C. 18','D. 24'],a:'C',exp:'原文「within 18 months」，答案 C。'},
+    {t:'NOT題',q:'Which is NOT part of the proposal?',opts:['A. Joint product development','B. Shared marketing','C. Co-hosted events','D. Staff exchange program'],a:'D',exp:'原文沒有 staff exchange，答案 D。'},
+    {t:'推論',q:'What will most likely happen next?',opts:['A. Sarah sends a contract','B. They schedule a meeting','C. David rejects the proposal','D. Companies merge'],a:'B',exp:'Sarah 說「I would like to schedule a meeting」，下一步最可能是安排會議，答案 B。'},
+  ]},vocab:[
+    {w:'benchmark',ph:'/ˈbentʃmɑːrk/',tw:'基準、標竿',ex:'Sales targets are set using industry benchmarks.'},
+    {w:'onboarding',ph:'/ˈɒnbɔːrdɪŋ/',tw:'新員工入職流程',ex:'The onboarding process takes two weeks.'},
+    {w:'fiscal',ph:'/ˈfɪskl/',tw:'財政的、會計的',ex:'The fiscal year ends on December 31.'},
+    {w:'deficit',ph:'/ˈdefɪsɪt/',tw:'赤字、虧損',ex:'The company reported a deficit for the first time.'},
+    {w:'acquisition',ph:'/ˌækwɪˈzɪʃn/',tw:'收購、併購',ex:'The acquisition was completed last month.'},
+    {w:'merger',ph:'/ˈmɜːdʒər/',tw:'合併（公司）',ex:'The merger was approved by both boards.'},
+    {w:'dividend',ph:'/ˈdɪvɪdend/',tw:'股息、紅利',ex:'Shareholders receive a dividend this quarter.'},
+    {w:'expenditure',ph:'/ɪkˈspendɪtʃə/',tw:'支出、費用',ex:'Marketing expenditure increased by 15%.'},
+    {w:'invoice',ph:'/ˈɪnvɔɪs/',tw:'發票、帳單',ex:'Please send the invoice to accounting.'},
+    {w:'liability',ph:'/ˌlaɪəˈbɪləti/',tw:'負債、責任',ex:'The firm has significant liabilities.'},
+  ]},
+  {grammar:[
+    {t:'時態 — since',q:'Since the new CEO took office, profits <em>______</em> by 30%.',opts:['A. increased','B. have increased','C. increase','D. will increase'],a:'B',exp:'<strong>B — have increased</strong>：since + 過去時間點，主句用現在完成式。'},
+    {t:'詞性（名詞）',q:'The <em>______</em> of the new branch is scheduled for next spring.',opts:['A. open','B. openly','C. opening','D. opened'],a:'C',exp:'<strong>C — opening（名詞）</strong>：定冠詞 The 後需要名詞作主詞。'},
+    {t:'比較級',q:'Our new product line is far <em>______</em> than what competitors offer.',opts:['A. superior','B. more superior','C. most superior','D. superiority'],a:'A',exp:'<strong>A — superior</strong>：superior 本身已含比較含義，不能加 more。be superior to = 優於…。'},
+    {t:'假設語氣',q:'If the budget <em>______</em> approved, we could hire ten more staff.',opts:['A. is','B. were','C. will be','D. has been'],a:'B',exp:'<strong>B — were</strong>：第二條件句假設非現實，If + were，主句用 could/would + V。'},
+    {t:'關係代名詞',q:'The candidate <em>______</em> résumé impressed the panel was offered the position.',opts:['A. who','B. whom','C. whose','D. which'],a:'C',exp:'<strong>C — whose</strong>：空格後是名詞 résumé（所有格），用 whose 表示「其…的」。'},
+  ],reading:{title:'Notice — Office Renovation',passage:'<strong>NOTICE TO ALL STAFF</strong><br>From: Facilities Management | March 15<br><br>The <strong>main office on floors 3 and 4</strong> will undergo renovation from <strong>April 1 to April 30</strong>. All staff on these floors will be temporarily relocated to conference rooms on Floor 1.<br><br>• Personal belongings must be removed by <strong>March 31</strong><br>• IT equipment will be moved by the facilities team<br>• Parking unavailable in Lot B during renovation<br>• Temporary café will be set up on Floor 1<br><br>Questions? Contact facilities@office.com.',qs:[
+    {t:'主旨',q:'What is the purpose of this notice?',opts:['A. To announce a new office','B. To inform staff about renovation','C. To announce parking rules','D. To announce relocation'],a:'B',exp:'Notice 主旨「undergo renovation」直接說明，答案 B。'},
+    {t:'細節',q:'How long will the renovation last?',opts:['A. Two weeks','B. Three weeks','C. One month','D. Two months'],a:'C',exp:'April 1–30 = 一個月，答案 C。'},
+    {t:'細節',q:'Where will relocated staff work?',opts:['A. Floor 2','B. Conference rooms on Floor 1','C. A nearby building','D. From home'],a:'B',exp:'原文「relocated to the conference rooms on Floor 1」，答案 B。'},
+    {t:'NOT題',q:'Which is NOT mentioned as affected?',opts:['A. Personal belongings','B. IT equipment','C. Lot B parking','D. Staff cafeteria on Floor 3'],a:'D',exp:'原文沒有提到 Floor 3 餐廳，答案 D。'},
+    {t:'細節',q:'What should staff do before March 31?',opts:['A. Submit renovation requests','B. Remove personal items','C. Register for parking','D. Book conference rooms'],a:'B',exp:'原文「Personal belongings must be removed by March 31」，答案 B。'},
+  ]},vocab:[
+    {w:'tentative',ph:'/ˈtentətɪv/',tw:'暫定的、試探性的',ex:'We have a tentative meeting on Friday.'},
+    {w:'nominal',ph:'/ˈnɒmɪnl/',tw:'名義上的、微不足道的',ex:'There is a nominal fee for the service.'},
+    {w:'obsolete',ph:'/ˈɒbsəliːt/',tw:'過時的、廢棄的',ex:'The old software has become obsolete.'},
+    {w:'inaugurate',ph:'/ɪˈnɔːɡjəreɪt/',tw:'正式開幕、就職',ex:'The headquarters was inaugurated last week.'},
+    {w:'reimburse',ph:'/ˌriːɪmˈbɜːrs/',tw:'報銷、退款',ex:'The company reimburses travel expenses.'},
+    {w:'negotiate',ph:'/nɪˈɡoʊʃieɪt/',tw:'協商、談判',ex:'We need to negotiate a new contract.'},
+    {w:'compensate',ph:'/ˈkɒmpenseɪt/',tw:'補償、給薪酬',ex:'Staff are compensated for overtime.'},
+    {w:'probation',ph:'/prəˈbeɪʃn/',tw:'試用期',ex:'New employees undergo a three-month probation.'},
+    {w:'turnover',ph:'/ˈtɜːnoʊvər/',tw:'離職率、員工流動',ex:'High turnover is costly for companies.'},
+    {w:'incentive',ph:'/ɪnˈsentɪv/',tw:'獎勵、誘因',ex:'Performance bonuses are used as incentives.'},
+  ]},
+  {grammar:[
+    {t:'不定詞 vs 動名詞',q:'The CEO avoided <em>______</em> directly about the merger plans.',opts:['A. to speak','B. speaking','C. spoken','D. speak'],a:'B',exp:'<strong>B — speaking</strong>：avoid 後固定接動名詞（Ving）。'},
+    {t:'倒裝句',q:'<em>______</em> did we realize the extent of the damage.',opts:['A. Only then','B. Just','C. Until','D. When'],a:'A',exp:'<strong>A — Only then</strong>：否定副詞置句首，主句需倒裝：Only then did we realize…'},
+    {t:'分詞構句',q:'<em>______</em> all options carefully, the board decided to expand overseas.',opts:['A. Consider','B. Considered','C. Having considered','D. To consider'],a:'C',exp:'<strong>C — Having considered</strong>：表示主句動作之前已完成，用 Having + p.p.。'},
+    {t:'詞性（形容詞）',q:'The new regulation will have a <em>______</em> impact on small businesses.',opts:['A. significance','B. significantly','C. significant','D. signify'],a:'C',exp:'<strong>C — significant（形容詞）</strong>修飾名詞 impact。'},
+    {t:'過去完成式',q:'By the time the auditors arrived, the accountant <em>______</em> all the records.',opts:['A. reviewed','B. has reviewed','C. reviews','D. had reviewed'],a:'D',exp:'<strong>D — had reviewed</strong>：By the time + 過去式，主句用過去完成式（had + p.p.）。'},
+  ],reading:{title:'Advertisement — Business Conference',passage:'<strong>ANNUAL BUSINESS INNOVATION CONFERENCE 2025</strong><br>Date: June 12–14 | Venue: Grand Hyatt, Taipei<br><br>Join <strong>500+ industry leaders</strong> for keynotes, workshops, and networking. Theme: <em>"Digital Transformation in the Modern Workplace"</em><br><br><strong>Registration:</strong><br>• Early Bird (before Apr 30): NT$8,000<br>• Standard: NT$12,000<br>• Group (5+ people): NT$7,500/person<br><br>Includes: all sessions, daily lunch, conference kit. <strong>Hotel NOT included.</strong><br><br>Register at bic2025.com. Spaces limited!',qs:[
+    {t:'主旨',q:'What is this advertisement for?',opts:['A. A hotel promotion','B. A business conference','C. A training program','D. A trade exhibition'],a:'B',exp:'標題「Business Innovation Conference」直接說明，答案 B。'},
+    {t:'細節',q:'What is the early bird fee?',opts:['A. NT$7,500','B. NT$8,000','C. NT$10,000','D. NT$12,000'],a:'B',exp:'原文「Early Bird: NT$8,000」，答案 B。'},
+    {t:'NOT題',q:'What does registration NOT include?',opts:['A. All sessions','B. Daily lunch','C. Conference kit','D. Hotel accommodation'],a:'D',exp:'原文「Hotel NOT included」，答案 D。'},
+    {t:'計算',q:'How much would a group of 6 pay in total?',opts:['A. NT$45,000','B. NT$48,000','C. NT$50,000','D. NT$72,000'],a:'A',exp:'NT$7,500 × 6 = NT$45,000，答案 A。'},
+    {t:'推論',q:'What is implied by "Spaces limited"?',opts:['A. Venue is very large','B. Register early','C. Fee will increase','D. VIPs only'],a:'B',exp:'名額有限暗示應及早報名，答案 B。'},
+  ]},vocab:[
+    {w:'dispatch',ph:'/dɪˈspætʃ/',tw:'派遣、發送貨物',ex:'The order was dispatched this morning.'},
+    {w:'consignment',ph:'/kənˈsaɪnmənt/',tw:'一批貨物',ex:'The latest consignment arrived Tuesday.'},
+    {w:'shortage',ph:'/ˈʃɔːtɪdʒ/',tw:'短缺、不足',ex:'There is a shortage of semiconductor components.'},
+    {w:'overdue',ph:'/ˌoʊvəˈdjuː/',tw:'逾期的',ex:'The payment is two weeks overdue.'},
+    {w:'freight',ph:'/freɪt/',tw:'貨運、運費',ex:'Freight costs increased due to fuel prices.'},
+    {w:'warehouse',ph:'/ˈweəhaʊs/',tw:'倉庫',ex:'Products are stored in our central warehouse.'},
+    {w:'vendor',ph:'/ˈvendər/',tw:'供應商',ex:'We work with vendors from 15 countries.'},
+    {w:'logistics',ph:'/ləˈdʒɪstɪks/',tw:'物流',ex:'The logistics team coordinates deliveries.'},
+    {w:'customs',ph:'/ˈkʌstəmz/',tw:'海關',ex:'Goods were held at customs for inspection.'},
+    {w:'procurement',ph:'/prəˈkjʊərmənt/',tw:'採購',ex:'Procurement team sources materials globally.'},
+  ]},
+  {grammar:[
+    {t:'主動 vs 被動',q:'The annual budget report <em>______</em> to all managers yesterday.',opts:['A. distributed','B. was distributed','C. has distributed','D. distributes'],a:'B',exp:'<strong>B — was distributed</strong>：報告是「被發送的」+ yesterday，用過去被動式。'},
+    {t:'副詞位置',q:'The finance team has <em>______</em> completed the quarterly audit.',opts:['A. successful','B. success','C. successfully','D. succeed'],a:'C',exp:'<strong>C — successfully（副詞）</strong>修飾動詞 completed，放在助動詞和過去分詞之間。'},
+    {t:'冠詞用法',q:'We need to hire <em>______</em> experienced project manager.',opts:['A. a','B. an','C. the','D. 不需冠詞'],a:'B',exp:'<strong>B — an</strong>：experienced 以母音音素 /ɪ/ 開頭，用 an。冠詞看「發音」不看「字母」。'},
+    {t:'第三條件句',q:'The deal would have been finalized if both parties <em>______</em> on the terms.',opts:['A. agree','B. agreed','C. had agreed','D. will agree'],a:'C',exp:'<strong>C — had agreed</strong>：第三條件句（與過去事實相反），if + had + p.p.。'},
+    {t:'分詞形容詞',q:'The <em>______</em> proposal was immediately sent to the legal team.',opts:['A. revise','B. revising','C. revised','D. revision'],a:'C',exp:'<strong>C — revised（過去分詞）</strong>作形容詞表「已修改的」。p.p. 表被動完成，Ving 表主動進行。'},
+  ],reading:{title:'Letter — Customer Complaint Response',passage:'<strong>Dear Ms. Thompson,</strong><br><br>Thank you for contacting us about order #45821. We sincerely apologize for the <strong>delayed delivery</strong> and damaged items.<br><br>We have arranged:<br>1. Full refund of NT$3,200 within <strong>5–7 business days</strong><br>2. Replacement order shipped by express at no extra cost<br>3. <strong>15% discount coupon</strong> for your next purchase<br><br>Our quality control team has been notified to investigate.<br><br>Sincerely, Kevin Park | Customer Service Manager | ShopDirect',qs:[
+    {t:'主旨',q:'What is the purpose of this letter?',opts:['A. To promote a product','B. To respond to a complaint','C. To announce a price change','D. To invite to an event'],a:'B',exp:'信件中 "apologize" 和 "regarding your order" 顯示這是回應客訴，答案 B。'},
+    {t:'細節',q:'How long will the refund take?',opts:['A. 1–3 days','B. 3–5 days','C. 5–7 days','D. 7–10 days'],a:'C',exp:'原文「5–7 business days」，答案 C。'},
+    {t:'細節',q:'What discount is offered?',opts:['A. 10%','B. 15%','C. 20%','D. 25%'],a:'B',exp:'原文「15% discount coupon」，答案 B。'},
+    {t:'NOT題',q:'Which remedy is NOT mentioned?',opts:['A. Full refund','B. Replacement order','C. Discount coupon','D. Free membership upgrade'],a:'D',exp:'原文沒有 membership upgrade，答案 D。'},
+    {t:'推論',q:'What will the quality control team most likely do?',opts:['A. Contact Ms. Thompson','B. Issue another refund','C. Investigate the delivery issue','D. Close the account'],a:'C',exp:'原文「notified to investigate the issue」，答案 C。'},
+  ]},vocab:[
+    {w:'tentative',ph:'/ˈtentətɪv/',tw:'暫定的',ex:'We have a tentative launch schedule.'},
+    {w:'initiative',ph:'/ɪˈnɪʃətɪv/',tw:'主動性、新計畫',ex:'The sustainability initiative launched last year.'},
+    {w:'consensus',ph:'/kənˈsensəs/',tw:'共識',ex:'The team reached a consensus on strategy.'},
+    {w:'adjourn',ph:'/əˈdʒɜːn/',tw:'休會、延期',ex:'The meeting was adjourned until next week.'},
+    {w:'facilitate',ph:'/fəˈsɪlɪteɪt/',tw:'促進、主持',ex:'She facilitated the discussion.'},
+    {w:'delegate',ph:'/ˈdelɪɡeɪt/',tw:'授權、委派',ex:'He delegated the task to his assistant.'},
+    {w:'proposal',ph:'/prəˈpoʊzl/',tw:'提案、建議書',ex:'The proposal was approved by the committee.'},
+    {w:'clarify',ph:'/ˈklærɪfaɪ/',tw:'澄清、說明',ex:'Could you clarify what you mean?'},
+    {w:'appraisal',ph:'/əˈpreɪzl/',tw:'績效考核',ex:'Annual appraisals are conducted in December.'},
+    {w:'resignation',ph:'/ˌrezɪɡˈneɪʃn/',tw:'辭職',ex:'Her resignation surprised the team.'},
+  ]},
+  {grammar:[
+    {t:'so…that 句型',q:'The training was <em>______</em> comprehensive that all participants passed the exam.',opts:['A. very','B. so','C. too','D. such'],a:'B',exp:'<strong>B — so</strong>：so + 形容詞 + that = 如此…以至於。such 後接名詞。'},
+    {t:'either…or',q:'<em>______</em> the CEO or the CFO will attend the shareholder meeting.',opts:['A. Both','B. Neither','C. Either','D. Whether'],a:'C',exp:'<strong>C — Either</strong>：either A or B = A 或 B（二選一）。both A and B = 兩者都。'},
+    {t:'名詞子句',q:'The report shows <em>______</em> the company has achieved its annual targets.',opts:['A. what','B. which','C. that','D. how'],a:'C',exp:'<strong>C — that</strong>：shows that + 完整子句，that 引導名詞子句。'},
+    {t:'強調副詞',q:'The new policy will affect <em>______</em> all employees in the organization.',opts:['A. virtual','B. virtually','C. virtuous','D. virtue'],a:'B',exp:'<strong>B — virtually（副詞）</strong>= almost，修飾 all。virtual = 虛擬的（形容詞）。'},
+    {t:'despite vs although',q:'<em>______</em> receiving numerous complaints, the company refused to recall the product.',opts:['A. Although','B. Even though','C. Despite','D. However'],a:'C',exp:'<strong>C — Despite</strong>：空格後是動名詞 receiving（非子句），用介系詞 despite。'},
+  ],reading:{title:'Article — Remote Work Trends',passage:'<strong>HYBRID MODELS GAIN POPULARITY</strong><br><br>A survey of 1,200 companies found <strong>68%</strong> adopted hybrid work policies since 2022. Employee productivity increased by <strong>22%</strong> under flexible arrangements.<br><br>Approximately <strong>40% of managers</strong> reported difficulties maintaining team cohesion remotely. Companies are investing in collaboration tools and virtual team-building activities.<br><br>Experts predict that by 2026, fully remote positions will account for <strong>30% of tech jobs</strong>, up from 18% today.',qs:[
+    {t:'主旨',q:'What is the main topic of this article?',opts:['A. Office construction','B. Hybrid and remote work','C. Technology investment','D. Employee surveys'],a:'B',exp:'標題和內容都圍繞 hybrid work，答案 B。'},
+    {t:'細節',q:'What percentage adopted hybrid policies?',opts:['A. 22%','B. 40%','C. 68%','D. 30%'],a:'C',exp:'原文「68% adopted hybrid work policies」，答案 C。注意文中多個數字。'},
+    {t:'細節',q:'What challenge did managers report?',opts:['A. Lower productivity','B. Higher costs','C. Difficulty maintaining cohesion','D. Lack of tools'],a:'C',exp:'原文「difficulties maintaining team cohesion remotely」，答案 C。'},
+    {t:'細節',q:'What percentage of tech jobs are predicted remote by 2026?',opts:['A. 18%','B. 22%','C. 30%','D. 40%'],a:'C',exp:'原文「30% of tech jobs」by 2026，18% 是現在的數字，答案 C。'},
+    {t:'推論',q:'What can be inferred about productivity under hybrid work?',opts:['A. Decreased significantly','B. Remained unchanged','C. Improved on average','D. Varied by industry'],a:'C',exp:'原文「productivity increased by 22%」，答案 C。'},
+  ]},vocab:[
+    {w:'fluctuate',ph:'/ˈflʌktʃueɪt/',tw:'波動、起伏',ex:'Prices fluctuated significantly last year.'},
+    {w:'substantial',ph:'/səbˈstænʃl/',tw:'大量的、實質的',ex:'There was a substantial increase in sales.'},
+    {w:'consecutive',ph:'/kənˈsekjʊtɪv/',tw:'連續的',ex:'Sales rose for five consecutive quarters.'},
+    {w:'marginal',ph:'/ˈmɑːdʒɪnl/',tw:'微小的、邊際的',ex:'There was only marginal improvement.'},
+    {w:'projection',ph:'/prəˈdʒekʃn/',tw:'預測、預估',ex:'Sales projections look optimistic.'},
+    {w:'plateau',ph:'/ˈplætoʊ/',tw:'趨於平穩',ex:"Growth has plateaued after rapid expansion."},
+    {w:'yield',ph:'/jiːld/',tw:'產出、報酬率',ex:'The investment yielded a 12% return.'},
+    {w:'variance',ph:'/ˈveəriəns/',tw:'差異、變異',ex:'The variance between actual and projected costs was minimal.'},
+    {w:'approximately',ph:'/əˈprɒksɪmətli/',tw:'大約',ex:'Approximately 200 employees attended.'},
+    {w:'benchmark',ph:'/ˈbentʃmɑːrk/',tw:'基準、標竿',ex:'The system exceeded all benchmarks.'},
+  ]},
+  {grammar:[
+    {t:'動詞搭配',q:'The marketing team is currently <em>______</em> a new campaign for the holiday season.',opts:['A. doing','B. making','C. developing','D. conducting'],a:'C',exp:'<strong>C — developing</strong>：develop a campaign = 開發行銷活動。固定搭配記憶是 Part 5 常考點。'},
+    {t:'數量詞',q:'<em>______</em> of the budget has been allocated to marketing this quarter.',opts:['A. A large number','B. A large amount','C. Large numbers','D. Many'],a:'B',exp:'<strong>B — A large amount</strong>：budget 是不可數名詞，用 amount。number/many 用於可數名詞。'},
+    {t:'強調句型',q:'It was the new marketing strategy <em>______</em> led to the company\'s success.',opts:['A. which','B. what','C. that','D. who'],a:'C',exp:'<strong>C — that</strong>：強調句型 It is/was…that…。強調 the marketing strategy，用 that。'},
+    {t:'動詞片語',q:'The board has decided to <em>______</em> the launch of the new product line.',opts:['A. speed up','B. run out','C. take over','D. break down'],a:'A',exp:'<strong>A — speed up（加速）</strong>：speed up the launch = 加速推出。其他片語意思不符。'},
+    {t:'冠詞 — an',q:'The HR department will send all applicants <em>______</em> email confirmation.',opts:['A. a','B. an','C. the','D. 不需冠詞'],a:'B',exp:'<strong>B — an</strong>：email 以母音音素 /iː/ 開頭，用 an。'},
+  ],reading:{title:'Memo — Travel Policy Update',passage:'<strong>INTERNAL MEMORANDUM</strong><br>To: All Staff | From: Finance Dept. | Re: Updated Travel Policy<br><br>Effective <strong>February 1</strong>:<br><br><strong>Flights:</strong> Must be booked <strong>14 days in advance</strong> via corporate travel portal. Economy class required for flights under 6 hours.<br><br><strong>Hotel:</strong> Maximum reimbursable rate: <strong>NT$5,000/night</strong>. Receipts within 10 business days of return.<br><br><strong>Meals:</strong> Daily allowance: NT$800. <strong>Alcohol not reimbursable</strong> under any circumstances.<br><br>Contact finance@company.com or ext. 305.',qs:[
+    {t:'主旨',q:'What is the purpose of this memo?',opts:['A. Announce staff layoffs','B. Update travel policy','C. Introduce booking system','D. Report quarterly expenses'],a:'B',exp:'標題「Updated Travel Policy」直接說明目的，答案 B。'},
+    {t:'細節',q:'How far in advance must flights be booked?',opts:['A. 7 days','B. 10 days','C. 14 days','D. 21 days'],a:'C',exp:'原文「14 days in advance」，答案 C。'},
+    {t:'細節',q:'What is the maximum hotel reimbursement rate?',opts:['A. NT$3,000','B. NT$4,000','C. NT$5,000','D. NT$6,000'],a:'C',exp:'原文「NT$5,000/night」，答案 C。'},
+    {t:'NOT題',q:'Which expense is explicitly NOT reimbursable?',opts:['A. Economy flights','B. Hotel accommodation','C. Meals','D. Alcohol'],a:'D',exp:'原文「Alcohol not reimbursable under any circumstances」，答案 D。'},
+    {t:'推論',q:'What will likely happen if receipts are submitted after 10 business days?',opts:['A. Penalty issued','B. Reimbursement may not be processed','C. Finance will contact them','D. Must pay full amount'],a:'B',exp:'超過期限未提交收據，最可能後果是報銷不被受理，答案 B。'},
+  ]},vocab:[
+    {w:'pursuant to',ph:'/ˈpɜːrsuənt/',tw:'依據、根據',ex:'Pursuant to policy, expenses require approval.'},
+    {w:'outsource',ph:'/ˈaʊtsɔːrs/',tw:'外包',ex:'The company outsourced its IT support.'},
+    {w:'streamline',ph:'/ˈstriːmlaɪn/',tw:'精簡流程',ex:'We streamlined the approval process.'},
+    {w:'compliance',ph:'/kəmˈplaɪəns/',tw:'合規、遵從',ex:'Staff complete annual compliance training.'},
+    {w:'leverage',ph:'/ˈlevərɪdʒ/',tw:'善用、槓桿',ex:'We leverage our network to expand.'},
+    {w:'subsidiary',ph:'/səbˈsɪdiəri/',tw:'子公司',ex:'The subsidiary operates independently.'},
+    {w:'stakeholder',ph:'/ˈsteɪkhoʊldər/',tw:'利害關係人',ex:'All stakeholders were informed.'},
+    {w:'equity',ph:'/ˈekwəti/',tw:'股權、公平性',ex:'Employees received equity as compensation.'},
+    {w:'onboarding',ph:'/ˈɒnbɔːrdɪŋ/',tw:'入職流程',ex:'Onboarding takes about two weeks.'},
+    {w:'mitigate',ph:'/ˈmɪtɪɡeɪt/',tw:'減輕、緩和',ex:'Steps were taken to mitigate risks.'},
+  ]},
+];
+
+// ===========================
+// PRACTICE DAY STATE
+// ===========================
+let currentPDay = 0;
+let currentPTab = 'grammar';
+const QA = {};
 
 let sessionAnswers = {};
 let sessionCorrect = 0;
 let sessionTotal = 0;
-let currentPSection = 'grammar';
+
+function getPracticeDay(idx) { return PDATA[idx % PDATA.length]; }
+
+function initPracticeDay() {
+  const start = localStorage.getItem('toeic_start');
+  if (start) {
+    const diff = Math.floor((new Date() - new Date(start)) / 86400000);
+    currentPDay = Math.max(0, diff);
+  }
+  renderPracticeDay();
+  renderPWeekDots();
+}
+
+function changePDay(d) {
+  currentPDay = Math.max(0, currentPDay + d);
+  resetPSession();
+  renderPracticeDay();
+  renderPWeekDots();
+}
+
+function jumpPDay(d) {
+  currentPDay = d;
+  resetPSession();
+  renderPracticeDay();
+  renderPWeekDots();
+}
+
+function resetPSession() {
+  sessionAnswers = {};
+  sessionCorrect = 0;
+  sessionTotal = 0;
+  updateSummary();
+  const sb = document.getElementById('btnSave');
+  if (sb) { sb.textContent = '💾 儲存'; sb.disabled = true; }
+}
+
+function renderPWeekDots() {
+  const el = document.getElementById('pWeekDots');
+  if (!el) return;
+  const start = Math.max(0, currentPDay - 3);
+  let html = '';
+  for (let i = start; i < start + 14; i++) {
+    html += `<div class="wd ${i===currentPDay?'active':''}" onclick="jumpPDay(${i})">D${i+1}</div>`;
+  }
+  el.innerHTML = html;
+}
+
+function renderPracticeDay() {
+  const start = localStorage.getItem('toeic_start') || new Date().toISOString().split('T')[0];
+  const targetDate = new Date(start);
+  targetDate.setDate(targetDate.getDate() + currentPDay);
+  document.getElementById('pDayLabel').textContent = `Day ${currentPDay + 1}`;
+  document.getElementById('pDayDate').textContent = targetDate.toLocaleDateString('zh-TW', {month:'long', day:'numeric', weekday:'short'});
+
+  currentPTab = 'grammar';
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+  const gt = document.getElementById('ptab-grammar');
+  if (gt) gt.classList.add('active');
+  document.getElementById('scoreSummary').style.display = 'flex';
+  renderPTab('grammar');
+}
+
+function showPTab(id, btn) {
+  currentPTab = id;
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('scoreSummary').style.display = id === 'vocab' ? 'none' : 'flex';
+  renderPTab(id);
+}
+
+function renderPTab(tab) {
+  const data = getPracticeDay(currentPDay);
+  const el = document.getElementById('practiceContent');
+  if (!el) return;
+
+  if (tab === 'grammar') {
+    data.grammar.forEach((q, i) => { QA[i] = {correct: q.a, exp: q.exp}; });
+    el.innerHTML = `<div class="sub-label green">Part 5 — 文法練習（5題）· Day ${currentPDay+1}</div>` +
+      data.grammar.map((q, i) => `<div class="quiz-card">
+        <div class="q-num">Q${i+1} · ${q.t}</div>
+        <div class="q-text">${q.q}</div>
+        <div class="options">${q.opts.map(o => `<button class="option" data-lbl="${o.charAt(0)}" onclick="ans(this,${i},'${o.charAt(0)}')">${o.replace(o.charAt(0), '（'+o.charAt(0)+'）')}</button>`).join('')}</div>
+        <div class="feedback" id="fb${i}"></div>
+      </div>`).join('');
+  } else if (tab === 'reading') {
+    const r = data.reading;
+    r.qs.forEach((q, i) => { QA[10+i] = {correct: q.a, exp: q.exp}; });
+    el.innerHTML = `<div class="sub-label green">Part 7 — ${r.title}（5題）· Day ${currentPDay+1}</div>
+      <div class="quiz-card">
+        <div class="q-num">閱讀以下文章後回答問題</div>
+        <div class="q-passage">${r.passage}</div>
+        ${r.qs.map((q, i) => `<div class="sub-quiz" style="margin-bottom:1rem">
+          <div class="q-num" style="margin-top:.8rem">Q${i+1} · ${q.t}</div>
+          <div class="q-text">${q.q}</div>
+          <div class="options">${q.opts.map(o => `<button class="option" data-lbl="${o.charAt(0)}" onclick="ans(this,${10+i},'${o.charAt(0)}')">${o.replace(o.charAt(0),'（'+o.charAt(0)+'）')}</button>`).join('')}</div>
+          <div class="feedback" id="fb${10+i}"></div>
+        </div>`).join('')}
+      </div>`;
+  } else if (tab === 'vocab') {
+    el.innerHTML = `<div class="sub-label green">單字翻牌（10個）· Day ${currentPDay+1}</div>
+      <div class="vocab-grid2">${data.vocab.map(v => {
+        const wId = regSpeak(v.w); const exId = regSpeak(v.ex);
+        return `<div class="vocab-card" onclick="this.classList.toggle('flipped')">
+          <div class="vocab-front"><div class="word">${v.w}</div><div class="phonetic">${v.ph}</div>
+          <button class="vc-speak" onclick="event.stopPropagation();speakById('${wId}',this)">🔊 發音</button>
+          <div class="vocab-hint">點擊翻牌 →</div></div>
+          <div class="vocab-back"><div class="meaning">🇹🇼 ${v.tw}</div><div class="example">${v.ex}</div>
+          <button class="vc-speak-ex" onclick="event.stopPropagation();speakById('${exId}',this)">🔊 聽例句</button></div>
+        </div>`;
+      }).join('')}</div>`;
+  }
+}
+
+function savePracticeScore() {
+  if (sessionTotal === 0) return;
+  const history = JSON.parse(localStorage.getItem('toeic_practice') || '[]');
+  const now = new Date();
+  const label = now.toLocaleDateString('zh-TW') + ' ' + now.toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'});
+  history.unshift({time: label, correct: sessionCorrect, total: sessionTotal, rate: Math.round(sessionCorrect/sessionTotal*100),
+    section: currentPTab === 'grammar' ? 'Part 5' : currentPTab === 'reading' ? 'Part 7' : '單字',
+    day: `Day ${currentPDay+1}`});
+  localStorage.setItem('toeic_practice', JSON.stringify(history.slice(0, 50)));
+  if (window.saveCloud) window.saveCloud('toeic_practice', history.slice(0, 50));
+  document.getElementById('btnSave').disabled = true;
+  document.getElementById('btnSave').textContent = '✓ 已儲存';
+  renderPracticeHistory();
+  alert('✅ 成績已儲存！');
+}
 
 function ans(btn, qIdx, chosen) {
   if (sessionAnswers[qIdx] !== undefined) return;
-  const correct = QA[qIdx].correct;
+  const correct = QA[qIdx] ? QA[qIdx].correct : null;
+  if (!correct) return;
   const isCorrect = chosen === correct;
   sessionAnswers[qIdx] = isCorrect;
-  // Scope to .sub-quiz if exists (Part 7 multi-Q card), else .quiz-card
   const scope = btn.closest('.sub-quiz') || btn.closest('.quiz-card');
   scope.querySelectorAll('.option').forEach(o => {
     o.disabled = true;
@@ -1075,8 +1323,10 @@ function ans(btn, qIdx, chosen) {
     }
   });
   const fb = document.getElementById('fb' + qIdx);
-  fb.innerHTML = (isCorrect ? '<strong style="color:var(--green)">✓ 答對！</strong> ' : '<strong style="color:var(--accent2)">✗ 答錯。</strong> ') + QA[qIdx].exp;
-  fb.className = 'feedback show' + (isCorrect ? '' : ' wrong-fb');
+  if (fb) {
+    fb.innerHTML = (isCorrect ? '<strong style="color:var(--green)">✓ 答對！</strong> ' : '<strong style="color:var(--accent2)">✗ 答錯。</strong> ') + QA[qIdx].exp;
+    fb.className = 'feedback show' + (isCorrect ? '' : ' wrong-fb');
+  }
   if (isCorrect) sessionCorrect++;
   sessionTotal++;
   updateSummary();
@@ -1089,60 +1339,6 @@ function updateSummary() {
   document.getElementById('ssRate').textContent = sessionTotal > 0 ? Math.round(sessionCorrect / sessionTotal * 100) + '%' : '—';
   document.getElementById('btnSave').disabled = sessionTotal === 0;
 }
-
-function savePracticeScore() {
-  if (sessionTotal === 0) return;
-  const history = JSON.parse(localStorage.getItem('toeic_practice') || '[]');
-  const now = new Date();
-  const label = now.toLocaleDateString('zh-TW') + ' ' + now.toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'});
-  history.unshift({time: label, correct: sessionCorrect, total: sessionTotal, rate: Math.round(sessionCorrect/sessionTotal*100), section: currentPSection === 'grammar' ? 'Part 5' : 'Part 7'});
-  localStorage.setItem('toeic_practice', JSON.stringify(history.slice(0, 50)));
-  if (window.saveCloud) window.saveCloud('toeic_practice', history.slice(0, 50));
-  document.getElementById('btnSave').disabled = true;
-  document.getElementById('btnSave').textContent = '✓ 已儲存';
-  renderPracticeHistory();
-  alert('✅ 成績已儲存！');
-}
-
-const PVOCAB = [
-  {w:'pursuant to',ph:'/ˈpɜːrsuənt tuː/',tw:'依據、根據（法規）',ex:'Pursuant to company policy, all expenses require approval.'},
-  {w:'mitigate',ph:'/ˈmɪtɪɡeɪt/',tw:'減輕、緩和（風險）',ex:'Steps were taken to mitigate financial risks.'},
-  {w:'onboarding',ph:'/ˈɒnbɔːrdɪŋ/',tw:'新員工入職流程',ex:'The onboarding process takes about two weeks.'},
-  {w:'outsource',ph:'/ˈaʊtsɔːrs/',tw:'外包',ex:'The company decided to outsource its IT support.'},
-  {w:'streamline',ph:'/ˈstriːmlaɪn/',tw:'精簡、使更有效率',ex:'We need to streamline our approval process.'},
-  {w:'benchmark',ph:'/ˈbentʃmɑːrk/',tw:'基準、標竿',ex:'Sales targets are set using industry benchmarks.'},
-  {w:'turnaround',ph:'/ˈtɜːrnəraʊnd/',tw:'好轉、週轉時間',ex:'The turnaround time for orders is 48 hours.'},
-  {w:'equity',ph:'/ˈekwəti/',tw:'股權、公平性',ex:'Employees received equity as part of their compensation.'},
-  {w:'compliance',ph:'/kəmˈplaɪəns/',tw:'合規、遵從',ex:'All staff must complete annual compliance training.'},
-  {w:'leverage',ph:'/ˈlevərɪdʒ/',tw:'善用、槓桿作用',ex:'We can leverage our existing network to expand.'},
-  {w:'subsidiary',ph:'/səbˈsɪdiəri/',tw:'子公司',ex:'The subsidiary operates independently in Asia.'},
-  {w:'stakeholder',ph:'/ˈsteɪkhoʊldər/',tw:'利害關係人',ex:'All stakeholders were informed of the changes.'},
-];
-
-function buildPracticeVocab() {
-  const el = document.getElementById('practiceVocab');
-  if (!el) return;
-  el.innerHTML = PVOCAB.map(v => `
-    <div class="vocab-card" onclick="this.classList.toggle('flipped')">
-      <div class="vocab-front"><div class="word">${v.w}</div><div class="phonetic">${v.ph}</div><div class="vocab-hint">點擊翻牌 →</div></div>
-      <div class="vocab-back"><div class="meaning">🇹🇼 ${v.tw}</div><div class="example">${v.ex}</div></div>
-    </div>
-  `).join('');
-}
-
-function showPTab(id, btn) {
-  document.querySelectorAll('.quiz-section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('active'));
-  document.getElementById('qs-' + id).classList.add('active');
-  btn.classList.add('active');
-  currentPSection = id;
-  document.getElementById('scoreSummary').style.display = id === 'vocab' ? 'none' : 'flex';
-  if (id === 'vocab') buildPracticeVocab();
-}
-
-// ===========================
-// TRACKER
-// ===========================
 let scores = JSON.parse(localStorage.getItem('toeic_scores') || '[]');
 
 function addScore() {
@@ -1240,15 +1436,7 @@ function showPanel(id, btn) {
   btn.classList.add('active');
   if (id === 'tracker') { renderPracticeHistory(); renderScores(); setTimeout(()=>{if(scores.length>=2)renderChart();},100); }
   if (id === 'daily') { renderDay(); renderWeekDots(); }
-  if (id === 'practice') {
-    const now = new Date();
-    const weekdays = ['週日','週一','週二','週三','週四','週五','週六'];
-    document.getElementById('practiceDate').textContent =
-      now.toLocaleDateString('zh-TW', {year:'numeric', month:'long', day:'numeric'}) +
-      '　' + weekdays[now.getDay()];
-    document.getElementById('practiceDateSub').textContent =
-      'TODAY · ' + now.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}).toUpperCase();
-  }
+  if (id === 'practice') { initPracticeDay(); }
 }
 
 // ===========================
@@ -1308,23 +1496,13 @@ if (window.speechSynthesis) window.speechSynthesis.getVoices();
 document.addEventListener('DOMContentLoaded', () => {
   const d = document.getElementById('scoreDate');
   if (d) d.value = new Date().toISOString().split('T')[0];
-  // Init practice date
-  const now = new Date();
-  const weekdays = ['週日','週一','週二','週三','週四','週五','週六'];
-  const pd = document.getElementById('practiceDate');
-  const ps = document.getElementById('practiceDateSub');
-  if (pd) pd.textContent = now.toLocaleDateString('zh-TW', {year:'numeric', month:'long', day:'numeric'}) + '　' + weekdays[now.getDay()];
-  if (ps) ps.textContent = 'TODAY · ' + now.toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}).toUpperCase();
-  // Firebase module will call initDay/renderScores/etc after auth state resolves.
-  // Run locally first so the app is usable immediately (will be refreshed by cloud load).
   initDay();
+  initPracticeDay();
   renderScores();
   renderPracticeHistory();
   updateProgress();
-  // Show setup overlay if Firebase config hasn't been filled yet
   if (document.querySelector('script[type="module"]') &&
       document.querySelector('script[type="module"]').textContent.includes('YOUR_API_KEY')) {
-    // Config not yet filled — show hint after a short delay
     setTimeout(() => {
       const s = document.getElementById('syncStatus');
       if (s) { s.textContent = '⚙️ 點右方按鈕設定雲端同步'; s.className = 'sync-status warn'; }
