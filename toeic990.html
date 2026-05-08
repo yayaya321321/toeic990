@@ -1203,9 +1203,11 @@ function resetPSession() {
   sessionAnswers = {};
   sessionCorrect = 0;
   sessionTotal = 0;
-  updateSummary();
   const sb = document.getElementById('btnSave');
-  if (sb) { sb.textContent = '💾 儲存'; sb.disabled = true; }
+  if (sb) { sb.textContent = '💾 儲存'; sb.disabled = true; sb.style.background = ''; sb.style.boxShadow = ''; }
+  const summary = document.getElementById('scoreSummary');
+  if (summary) { summary.style.border = ''; summary.style.background = ''; }
+  updateSummary();
 }
 
 function renderPWeekDots() {
@@ -1253,7 +1255,7 @@ function renderPTab(tab) {
       data.grammar.map((q, i) => `<div class="quiz-card">
         <div class="q-num">Q${i+1} · ${q.t}</div>
         <div class="q-text">${q.q}</div>
-        <div class="options">${q.opts.map(o => `<button class="option" data-lbl="${o.charAt(0)}" onclick="ans(this,${i},'${o.charAt(0)}')">${o.replace(o.charAt(0), '（'+o.charAt(0)+'）')}</button>`).join('')}</div>
+        <div class="options">${q.opts.map(o => `<button class="option" data-lbl="${o.charAt(0)}" onclick="ans(this,${i},'${o.charAt(0)}')">（${o.charAt(0)}）${o.slice(2).trim()}</button>`).join('')}</div>
         <div class="feedback" id="fb${i}"></div>
       </div>`).join('');
   } else if (tab === 'reading') {
@@ -1266,7 +1268,7 @@ function renderPTab(tab) {
         ${r.qs.map((q, i) => `<div class="sub-quiz" style="margin-bottom:1rem">
           <div class="q-num" style="margin-top:.8rem">Q${i+1} · ${q.t}</div>
           <div class="q-text">${q.q}</div>
-          <div class="options">${q.opts.map(o => `<button class="option" data-lbl="${o.charAt(0)}" onclick="ans(this,${10+i},'${o.charAt(0)}')">${o.replace(o.charAt(0),'（'+o.charAt(0)+'）')}</button>`).join('')}</div>
+          <div class="options">${q.opts.map(o => `<button class="option" data-lbl="${o.charAt(0)}" onclick="ans(this,${10+i},'${o.charAt(0)}')">（${o.charAt(0)}）${o.slice(2).trim()}</button>`).join('')}</div>
           <div class="feedback" id="fb${10+i}"></div>
         </div>`).join('')}
       </div>`;
@@ -1290,15 +1292,23 @@ function savePracticeScore() {
   const history = JSON.parse(localStorage.getItem('toeic_practice') || '[]');
   const now = new Date();
   const label = now.toLocaleDateString('zh-TW') + ' ' + now.toLocaleTimeString('zh-TW', {hour:'2-digit',minute:'2-digit'});
-  history.unshift({time: label, correct: sessionCorrect, total: sessionTotal, rate: Math.round(sessionCorrect/sessionTotal*100),
+  history.unshift({time: label, correct: sessionCorrect, total: sessionTotal,
+    rate: Math.round(sessionCorrect/sessionTotal*100),
     section: currentPTab === 'grammar' ? 'Part 5' : currentPTab === 'reading' ? 'Part 7' : '單字',
     day: `Day ${currentPDay+1}`});
   localStorage.setItem('toeic_practice', JSON.stringify(history.slice(0, 50)));
   if (window.saveCloud) window.saveCloud('toeic_practice', history.slice(0, 50));
-  document.getElementById('btnSave').disabled = true;
-  document.getElementById('btnSave').textContent = '✓ 已儲存';
+
+  const btn = document.getElementById('btnSave');
+  btn.disabled = true;
+  btn.textContent = '✅ 已儲存！';
+  btn.style.background = 'rgba(76,175,130,.5)';
+  btn.style.boxShadow = 'none';
+
+  const summary = document.getElementById('scoreSummary');
+  summary.style.border = '1px solid var(--green)';
+
   renderPracticeHistory();
-  alert('✅ 成績已儲存！');
 }
 
 function ans(btn, qIdx, chosen) {
@@ -1337,7 +1347,27 @@ function updateSummary() {
   document.getElementById('ssCorrect').textContent = sessionCorrect;
   document.getElementById('ssWrong').textContent = sessionTotal - sessionCorrect;
   document.getElementById('ssRate').textContent = sessionTotal > 0 ? Math.round(sessionCorrect / sessionTotal * 100) + '%' : '—';
-  document.getElementById('btnSave').disabled = sessionTotal === 0;
+
+  const totalQs = 5;
+  const allDone = sessionTotal >= totalQs;
+  const btn = document.getElementById('btnSave');
+  btn.disabled = sessionTotal === 0;
+
+  // Green glow when at least 1 question answered; stronger glow when all done
+  const summary = document.getElementById('scoreSummary');
+  if (allDone) {
+    summary.style.border = '1px solid var(--green)';
+    summary.style.background = 'rgba(76,175,130,.08)';
+    btn.style.background = 'var(--green)';
+    btn.style.boxShadow = '0 0 12px rgba(76,175,130,.5)';
+    btn.textContent = '💾 儲存成績';
+  } else if (sessionTotal > 0) {
+    summary.style.border = '1px solid rgba(76,175,130,.3)';
+    summary.style.background = '';
+    btn.style.background = 'var(--green)';
+    btn.style.boxShadow = 'none';
+    btn.textContent = '💾 儲存';
+  }
 }
 let scores = JSON.parse(localStorage.getItem('toeic_scores') || '[]');
 
